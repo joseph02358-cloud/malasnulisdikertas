@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BantuBicara Kaigo - 介護コミュニケーションボード</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans JP (sangat jelas untuk lansia Jepang) & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Noto+Sans+JP:wght@700;800;900&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons untuk ikon UI yang bersih dan tegas -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Pengaturan dasar tipografi ramah lansia Jepang (Noto Sans JP) */
+        body, html {
+            font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Inter', sans-serif;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+        }
+
+        /* Animasi Marquee yang mulus menggunakan GPU acceleration (translate3d) */
+        @keyframes marquee-scroll {
+            0% {
+                transform: translate3d(100vw, 0, 0);
+            }
+            100% {
+                transform: translate3d(-100%, 0, 0);
+            }
+        }
+
+        .marquee-track {
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+            animation-name: marquee-scroll;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+
+        /* Mode Cermin (Mirror Mode) */
+        .mirror-flip {
+            transform: scaleX(-1);
+        }
+
+        /* Custom scrollbar halus untuk daftar frasa di dalam modal */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Transisi UI kontrol */
+        .ui-panel {
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        .ui-hidden-top {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .ui-hidden-bottom {
+            transform: translateY(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Transisi Modal Template */
+        .modal-backdrop {
+            transition: opacity 0.25s ease;
+        }
+        .modal-sheet {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+        }
+    </style>
+</head>
+<body class="bg-black text-yellow-400 h-screen w-screen overflow-hidden flex flex-col justify-between select-none transition-colors duration-300" id="app-body">
+
+    <!-- ==================== HEADER / PENGATURAN ATAS ==================== -->
+    <header id="top-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-lg">
+        <!-- Brand / Logo -->
+        <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl bg-yellow-400 text-black flex items-center justify-center font-black text-xl shadow-sm shrink-0">
+                <i class="ph-bold ph-hand-heart"></i>
+            </div>
+            <div>
+                <h1 id="ui-app-title" class="text-white font-extrabold text-sm sm:text-base leading-tight tracking-tight">BantuBicara Kaigo</h1>
+                <p id="ui-app-subtitle" class="text-zinc-400 text-[11px] font-medium">Papan Komunikasi Lansia & Tunarungu</p>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi Cepat Header -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+            <!-- Pengalih Bahasa Antarmuka (ID <-> 日本語) -->
+            <button id="btn-lang-toggle" onclick="toggleUILanguage()" class="px-2.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 text-xs sm:text-sm font-black flex items-center gap-1.5 border border-yellow-400/40 transition" title="Ganti Bahasa Antarmuka / 表示言語切替">
+                <i class="ph-bold ph-translate text-base"></i>
+                <span id="label-lang">日本語へ切替</span>
+            </button>
+
+            <!-- Toggle Mode: Diam (Statis) vs Berjalan -->
+            <button id="btn-mode-toggle" onclick="toggleScrollMode()" class="px-2.5 sm:px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 border border-zinc-700 transition">
+                <i id="icon-mode" class="ph-bold ph-align-center-horizontal text-yellow-400 text-base"></i>
+                <span id="label-mode">Diam</span>
+            </button>
+
+            <!-- Toggle Mirror Mode -->
+            <button id="btn-mirror" onclick="toggleMirror()" class="p-2 sm:px-2.5 sm:py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-300 text-xs sm:text-sm font-bold flex items-center gap-1 border border-zinc-700 transition" title="Cermin / 鏡文字">
+                <i class="ph-bold ph-flip-horizontal text-base"></i>
+                <span id="label-mirror" class="hidden md:inline">Cermin</span>
+            </button>
+
+            <!-- Tombol Fullscreen Layar Penuh -->
+            <button onclick="enterFocusMode()" class="px-3 sm:px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-md transition">
+                <i class="ph-bold ph-corners-out text-base"></i>
+                <span id="label-fullscreen">Layar Penuh</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== AREA TAMPILAN UTAMA (STAGE - ZOOM & GESER) ==================== -->
+    <main id="display-stage" class="relative flex-1 w-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing px-4">
+        
+        <!-- Layer Transformasi Zoom (Cubit) & Pan (Geser) -->
+        <div id="pan-zoom-layer" class="w-full h-full flex items-center justify-center will-change-transform origin-center">
+            <!-- Container Mirror Wrapper -->
+            <div id="mirror-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-200">
+                
+                <!-- MODE 1: TEKS BERJALAN (MARQUEE) -->
+                <div id="marquee-container" class="hidden w-full overflow-visible flex items-center">
+                    <div id="marquee-text" class="marquee-track font-black tracking-wide leading-none" style="font-size: 19vh;">
+                        おはようございます。よく眠れましたか？
+                    </div>
+                </div>
+
+                <!-- MODE 2: TEKS DIAM / STATIS (Default untuk Lansia agar nyaman dibaca) -->
+                <div id="static-container" class="w-full max-w-6xl mx-auto text-center px-3 sm:px-6 flex items-center justify-center">
+                    <p id="static-text" class="font-black tracking-normal leading-snug break-words" style="font-size: clamp(2.85rem, 8.5vw, 6.2rem);">
+                        おはようございます。よく眠れましたか？
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Badge Persentase Zoom Sementara (Muncul saat cubit zoom in/out) -->
+        <div id="zoom-badge" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-zinc-900/90 backdrop-blur-md border border-zinc-700 text-yellow-400 text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-lg pointer-events-none">
+            <i class="ph-bold ph-magnifying-glass-plus"></i>
+            <span id="zoom-badge-text">100%</span>
+        </div>
+
+        <!-- Tombol Reset Zoom & Posisi (Muncul jika teks digeser atau di-zoom) -->
+        <button id="reset-transform-btn" onclick="resetPanZoom(event)" class="hidden fixed top-4 left-4 z-40 px-3.5 py-2.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 backdrop-blur-md border border-zinc-700 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xl transition active:scale-95">
+            <i class="ph-bold ph-arrows-in-cardinal text-yellow-400 text-base"></i>
+            <span id="label-reset-pos">Reset Posisi</span>
+        </button>
+
+        <!-- Indikator Petunjuk Ketuk & Geser (Muncul saat Mode Fokus / Layar Penuh) -->
+        <div id="focus-hint" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-5 py-2.5 rounded-full bg-zinc-900/85 backdrop-blur-md border border-zinc-700/80 text-white/95 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-2xl animate-pulse pointer-events-none whitespace-nowrap">
+            <i class="ph-bold ph-hand-tap text-yellow-400 text-lg"></i>
+            <span id="label-focus-hint">Ketuk untuk edit • Cubit untuk zoom • Geser teks</span>
+        </div>
+
+        <!-- Tombol Keluar Mengambang (Pojok Kanan Atas saat Mode Fokus) -->
+        <button id="floating-exit-btn" onclick="exitFocusMode(event)" class="hidden fixed top-4 right-4 z-40 px-4 py-2.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 backdrop-blur-md border border-zinc-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xl transition active:scale-95">
+            <i class="ph-bold ph-pencil-simple text-yellow-400 text-base"></i>
+            <span id="label-exit-focus">Edit Teks</span>
+        </button>
+    </main>
+
+    <!-- ==================== PANEL KONTROL & INPUT BAWAH (BERSIH & RINGKAS) ==================== -->
+    <section id="bottom-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-3 sm:p-4 flex flex-col gap-2.5 shadow-2xl">
+        
+        <!-- Baris 1: Pengaturan Tampilan (Tema Warna Kontras Tinggi & Kecepatan Berjalan) -->
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-zinc-950/85 px-3 py-2 rounded-2xl border border-zinc-800/80">
+            
+            <!-- Pilihan Tema Kontras Tinggi Ramah Lansia -->
+            <div class="flex items-center gap-2">
+                <span id="label-theme" class="text-zinc-400 text-xs font-bold shrink-0">Warna:</span>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="setTheme('yellow-black')" data-theme="yellow-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-yellow-400 flex items-center justify-center ring-2 ring-yellow-400 ring-offset-2 ring-offset-zinc-950" title="Hitam & Kuning / 黒×黄">
+                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                    </button>
+                    <button onclick="setTheme('white-black')" data-theme="white-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-white flex items-center justify-center opacity-70 hover:opacity-100" title="Hitam & Putih / 黒×白">
+                        <span class="w-3 h-3 rounded-full bg-white"></span>
+                    </button>
+                    <button onclick="setTheme('black-white')" data-theme="black-white" class="theme-btn w-7 h-7 rounded-full bg-white border-2 border-zinc-400 flex items-center justify-center opacity-70 hover:opacity-100" title="Putih & Hitam / 白×黒">
+                        <span class="w-3 h-3 rounded-full bg-black"></span>
+                    </button>
+                    <button onclick="setTheme('white-navy')" data-theme="white-navy" class="theme-btn w-7 h-7 rounded-full bg-blue-950 border-2 border-white flex items-center justify-center opacity-70 hover:opacity-100" title="Biru Tua & Putih / 紺×白">
+                        <span class="w-3 h-3 rounded-full bg-white"></span>
+                    </button>
+                    <button onclick="setTheme('black-yellow')" data-theme="black-yellow" class="theme-btn w-7 h-7 rounded-full bg-yellow-400 border-2 border-black flex items-center justify-center opacity-70 hover:opacity-100" title="Kuning & Hitam / 黄×黒">
+                        <span class="w-3 h-3 rounded-full bg-black"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pilihan Kecepatan Gulir (Aktif saat Mode Berjalan) -->
+            <div id="speed-control-group" class="flex items-center gap-2 opacity-40 pointer-events-none transition-opacity">
+                <span id="label-speed" class="text-zinc-400 text-xs font-bold shrink-0">Kecepatan:</span>
+                <div class="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
+                    <button onclick="setSpeed('slow')" data-speed="slow" id="btn-speed-slow" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-zinc-700 text-white transition">Lambat</button>
+                    <button onclick="setSpeed('normal')" data-speed="normal" id="btn-speed-normal" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition">Sedang</button>
+                    <button onclick="setSpeed('fast')" data-speed="fast" id="btn-speed-fast" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition">Cepat</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Baris 2: Tombol Template + Kotak Input Teks Utama + Tombol Tampilkan -->
+        <form onsubmit="handleFormSubmit(event)" class="flex items-stretch gap-2">
+            <!-- Satu Tombol Template Khusus -->
+            <button 
+                type="button" 
+                onclick="openTemplateModal()" 
+                class="h-13 sm:h-14 px-3.5 sm:px-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 font-black text-xs sm:text-base flex items-center justify-center gap-1.5 border-2 border-yellow-400/50 shadow-md transition shrink-0"
+                title="Buka Daftar Template Kaigo / 定型文を開く"
+            >
+                <i class="ph-bold ph-chats-teardrop text-xl"></i>
+                <span id="label-template-btn">Template</span>
+            </button>
+
+            <div class="relative flex-1 min-w-0">
+                <input 
+                    type="text" 
+                    id="message-input" 
+                    placeholder="Ketik pesan atau pilih Template..." 
+                    autocomplete="off"
+                    class="w-full h-13 sm:h-14 pl-3.5 sm:pl-4 pr-11 rounded-2xl bg-zinc-800 text-white placeholder-zinc-400 text-base sm:text-xl font-bold border-2 border-zinc-700 focus:border-yellow-400 focus:outline-none transition"
+                >
+                <!-- Tombol Hapus/Bersihkan Cepat di dalam input -->
+                <button 
+                    type="button" 
+                    onclick="clearInput()" 
+                    id="btn-clear"
+                    title="Hapus Teks / 消去"
+                    class="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-zinc-700/80 hover:bg-red-500/90 text-zinc-200 hover:text-white flex items-center justify-center transition active:scale-90"
+                >
+                    <i class="ph-bold ph-trash text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tombol Tampilkan Besar -->
+            <button 
+                type="submit" 
+                class="h-13 sm:h-14 px-4 sm:px-6 rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-sm sm:text-lg flex items-center justify-center gap-1.5 shadow-lg transition shrink-0"
+            >
+                <i class="ph-bold ph-paper-plane-right text-xl"></i>
+                <span id="label-submit" class="hidden sm:inline">Tampilkan</span>
+            </button>
+        </form>
+
+    </section>
+
+    <!-- ==================== MODAL OVERLAY TEMPLATE KAIGO ==================== -->
+    <div id="template-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <!-- Latar Belakang Gelap Blur -->
+        <div onclick="closeTemplateModal()" class="modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-sm"></div>
+
+        <!-- Kontainer Sheet / Kartu Modal -->
+        <div class="modal-sheet relative z-10 w-full sm:max-w-2xl max-h-[85vh] bg-zinc-900 border-t sm:border border-zinc-700 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            
+            <!-- Header Modal -->
+            <div class="px-4 sm:px-5 py-3.5 bg-zinc-950/90 border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-yellow-400/15 text-yellow-400 flex items-center justify-center">
+                        <i class="ph-bold ph-chats-teardrop text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 id="modal-template-title" class="text-white font-black text-base sm:text-lg leading-tight">Template Komunikasi Kaigo</h2>
+                        <p id="modal-template-subtitle" class="text-zinc-400 text-xs font-medium">Ketuk kalimat untuk langsung ditampilkan ke layar</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeTemplateModal()" class="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-90" title="Tutup / 閉じる">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Bar Kategori Kaigo di dalam Modal -->
+            <div id="modal-category-tabs" class="px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                <!-- Diisi otomatis via JS -->
+            </div>
+
+            <!-- Daftar Kalimat Template Kaigo (Bisa di-scroll vertikal) -->
+            <div id="modal-phrases-list" class="p-3 sm:p-4 overflow-y-auto flex flex-col gap-2.5 bg-zinc-900/95" style="touch-action: pan-y;">
+                <!-- Diisi otomatis via JS -->
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Notifikasi Toast Mini (Pengganti alert) -->
+    <div id="toast-msg" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-zinc-800 text-white text-xs font-bold border border-zinc-700 shadow-xl opacity-0 pointer-events-none transition-opacity duration-300">
+        Pesan diperbarui
+    </div>
+
+    <script>
+        // ==================== DATA & STATE APLIKASI ====================
+        const state = {
+            uiLang: "id", // 'id' atau 'ja'
+            text: "おはようございます。よく眠れましたか？",
+            mode: "static", // Default 'static' (Diam)
+            theme: "yellow-black",
+            speed: "slow",
+            activeCategory: "greeting",
+            isMirrored: false,
+            isFocusMode: false,
+            isTemplateOpen: false,
+            // State Zoom & Geser (Pan)
+            scale: 1,
+            panX: 0,
+            panY: 0
+        };
+
+        // Kamus Antarmuka Dwibahasa (Indonesia & Jepang)
+        const i18n = {
+            id: {
+                appTitle: "BantuBicara Kaigo",
+                appSubtitle: "Papan Komunikasi Lansia & Tunarungu",
+                langBtn: "日本語へ切替",
+                modeStatic: "Diam",
+                modeMarquee: "Berjalan",
+                mirror: "Cermin",
+                fullscreen: "Layar Penuh",
+                focusHint: "Ketuk untuk edit • Cubit zoom • Geser teks",
+                exitFocus: "Edit Teks",
+                resetPos: "Reset Posisi",
+                themeLabel: "Warna:",
+                speedLabel: "Kecepatan:",
+                speedSlow: "Lambat",
+                speedNormal: "Sedang",
+                speedFast: "Cepat",
+                templateBtn: "Template",
+                modalTitle: "Template Komunikasi Kaigo",
+                modalSubtitle: "Ketuk kalimat untuk langsung ditampilkan ke layar",
+                inputPlaceholder: "Ketik pesan Jepang atau pilih Template...",
+                submitBtn: "Tampilkan",
+                emptyFallback: "Silakan ketik atau pilih pesan...",
+                toastCleared: "Kotak teks dibersihkan",
+                toastEmpty: "Silakan ketik atau pilih pesan dulu",
+                toastModeStatic: "Mode: Teks Diam (Nyaman untuk Lansia)",
+                toastModeMarquee: "Mode: Tulisan Berjalan",
+                toastMirrorOn: "Mode Cermin Aktif",
+                toastMirrorOff: "Mode Cermin Nonaktif",
+                toastLangChanged: "Bahasa antarmuka: Bahasa Indonesia",
+                toastResetPos: "Ukuran & posisi teks dikembalikan ke tengah"
+            },
+            ja: {
+                appTitle: "介護コミュニケーション",
+                appSubtitle: "高齢者・難聴者向け筆談ボード",
+                langBtn: "Bahasa ID",
+                modeStatic: "静止表示",
+                modeMarquee: "スクロール",
+                mirror: "鏡文字",
+                fullscreen: "全画面表示",
+                focusHint: "タップで編集 • ピンチで拡大縮小 • ドラッグで移動",
+                exitFocus: "文字を編集",
+                resetPos: "位置リセット",
+                themeLabel: "配色:",
+                speedLabel: "速度:",
+                speedSlow: "ゆっくり",
+                speedNormal: "ふつう",
+                speedFast: "はやい",
+                templateBtn: "定型文",
+                modalTitle: "介護コミュニケーション定型文",
+                modalSubtitle: "タップすると画面に大きく表示されます",
+                inputPlaceholder: "伝えたい言葉を入力、または定型文を選択...",
+                submitBtn: "大きく表示",
+                emptyFallback: "メッセージを入力してください",
+                toastCleared: "入力欄を消去しました",
+                toastEmpty: "メッセージを入力してください",
+                toastModeStatic: "表示モード：静止表示（読みやすい）",
+                toastModeMarquee: "表示モード：文字スクロール",
+                toastMirrorOn: "鏡文字モード：オン",
+                toastMirrorOff: "鏡文字モード：オフ",
+                toastLangChanged: "表示言語を日本語に切り替えました",
+                toastResetPos: "文字サイズと位置を元に戻しました"
+            }
+        };
+
+        // Kategori & Template Frasa Khusus Kaigo (介護専用フレーズテンプレート)
+        const kaigoCategories = [
+            {
+                id: "greeting",
+                icon: "ph-sun-horizon",
+                labelId: "Sapaan & Kondisi",
+                labelJa: "挨拶・体調確認",
+                phrases: [
+                    { ja: "おはようございます。よく眠れましたか？", reading: "おはようございます。よく ねむれましたか？", id: "Selamat pagi. Apakah tidur Anda nyenyak?" },
+                    { ja: "こんにちは。今日の調子はいかがですか？", reading: "こんにちは。きょうの ちょうしは いかがですか？", id: "Selamat siang. Bagaimana kondisi Anda hari ini?" },
+                    { ja: "どこか痛いところはありますか？", reading: "どこか いたい ところは ありますか？", id: "Apakah ada bagian tubuh yang sakit?" },
+                    { ja: "熱と血圧を測りましょうね。", reading: "ねつと けつあつを はかりましょうね。", id: "Mari kita ukur suhu tubuh dan tekanan darah ya." },
+                    { ja: "気分は悪くないですか？", reading: "きぶんは わるくないですか？", id: "Apakah Anda tidak merasa mual/tidak enak badan?" },
+                    { ja: "今日も一緒に頑張りましょうね。", reading: "きょうも いっしょに がんばりましょうね。", id: "Hari ini juga mari kita semangat bersama ya." }
+                ]
+            },
+            {
+                id: "meal",
+                icon: "ph-bowl-food",
+                labelId: "Makan & Minum",
+                labelJa: "食事・水分補給",
+                phrases: [
+                    { ja: "お食事の時間ですよ。", reading: "おしょくじの じかんですよ。", id: "Sudah waktunya makan ya." },
+                    { ja: "お水（お茶）を飲みましょう。", reading: "おみず（おちゃ）を のみましょう。", id: "Mari kita minum air / teh." },
+                    { ja: "ゆっくりよく噛んで食べてください。", reading: "ゆっくり よく かんで たべてください。", id: "Silakan makan perlahan dan kunyah dengan baik." },
+                    { ja: "おいしいですか？無理しないでくださいね。", reading: "おいしいですか？むり しないで くださいね。", id: "Apakah enak? Jangan dipaksakan ya." },
+                    { ja: "食後のお薬を飲みましょうね。", reading: "しょくごの おくすりを のみましょうね。", id: "Mari minum obat setelah makan ya." },
+                    { ja: "ごちそうさまでした。お口を拭きましょう。", reading: "ごちそうさまでした。おくちを ふきましょう。", id: "Terima kasih atas hidangannya. Mari kita lap mulut." }
+                ]
+            },
+            {
+                id: "hygiene",
+                icon: "ph-bathtub",
+                labelId: "Toilet, Mandi & Bersih",
+                labelJa: "排泄・入浴・清潔",
+                phrases: [
+                    { ja: "トイレに行きましょうか？", reading: "トイレに いきましょうか？", id: "Apakah Anda ingin pergi ke toilet?" },
+                    { ja: "おむつ（パッド）を交換しましょうね。", reading: "おむつ（パッド）を こうかんしましょうね。", id: "Mari kita ganti popok / pembalutnya ya." },
+                    { ja: "お風呂に入りましょう。", reading: "おふろに はいりましょう。", id: "Mari kita mandi." },
+                    { ja: "お湯加減はちょうどいいですか？", reading: "おゆかげんは ちょうど いいですか？", id: "Apakah suhu air mandinya sudah pas?" },
+                    { ja: "きれいな服に着替えをしましょう。", reading: "きれいな ふくに きがえを しましょう。", id: "Mari kita ganti dengan baju yang bersih." },
+                    { ja: "歯磨き（うがい）をしましょう。", reading: "はみがき（うがい）を しましょう。", id: "Mari kita sikat gigi / berkumur." }
+                ]
+            },
+            {
+                id: "mobility",
+                icon: "ph-wheelchair",
+                labelId: "Perpindahan & Aman",
+                labelJa: "移動・安全",
+                phrases: [
+                    { ja: "ゆっくり立ち上がりましょう。", reading: "ゆっくり たちあがりましょう。", id: "Mari berdiri perlahan-lahan." },
+                    { ja: "車椅子に座りましょう。", reading: "くるまいすに すわりましょう。", id: "Mari duduk di kursi roda." },
+                    { ja: "足元に気をつけてくださいね。", reading: "あしもとに きをつけて くださいね。", id: "Hati-hati dengan langkah kaki Anda ya." },
+                    { ja: "危ないので、手すりにつかまってください。", reading: "あぶないので、てすりに つかまってください。", id: "Berbahaya, silakan pegangan pada pegangan tangan." },
+                    { ja: "少し休みましょうか？横になりますか？", reading: "すこし やすみましょうか？よこに なりますか？", id: "Mau istirahat sebentar? Apakah ingin berbaring?" },
+                    { ja: "おやすみなさい。ゆっくり休んでください。", reading: "おやすみなさい。ゆっくり やすんでください。", id: "Selamat tidur. Silakan beristirahat dengan tenang." }
+                ]
+            },
+            {
+                id: "reassurance",
+                icon: "ph-heart",
+                labelId: "Respon & Penenang",
+                labelJa: "声かけ・安心",
+                phrases: [
+                    { ja: "大丈夫ですよ、安心してください。", reading: "だいじょうぶですよ、あんしん してください。", id: "Tidak apa-apa kok, tenang saja ya." },
+                    { ja: "少しお待ちくださいね。", reading: "すこし おまちくださいね。", id: "Mohon tunggu sebentar ya." },
+                    { ja: "私が手伝いますよ。", reading: "わたしが てつだいますよ。", id: "Saya akan membantu Anda." },
+                    { ja: "ありがとうございます。助かりました。", reading: "ありがとうございます。たすかりました。", id: "Terima kasih banyak. Sangat terbantu." },
+                    { ja: "すごいですね！上手にできましたね。", reading: "すごいですね！じょうずに できましたね。", id: "Hebat sekali! Anda melakukannya dengan baik." },
+                    { ja: "何かあったら、いつでも呼んでくださいね。", reading: "なにか あったら、いつでも よんでくださいね。", id: "Kalau ada apa-apa, panggil saya kapan saja ya." }
+                ]
+            }
+        ];
+
+        // Konfigurasi Tema Kontras Tinggi
+        const themes = {
+            "yellow-black": { bg: "bg-black", text: "text-yellow-400" },
+            "white-black":  { bg: "bg-black", text: "text-white" },
+            "black-white":  { bg: "bg-white", text: "text-black" },
+            "white-navy":   { bg: "bg-blue-950", text: "text-white" },
+            "black-yellow": { bg: "bg-yellow-400", text: "text-black" }
+        };
+
+        // Kecepatan dasar dalam piksel per detik
+        const speedPxPerSec = {
+            slow: 125,
+            normal: 230,
+            fast: 380
+        };
+
+        // ==================== ELEMEN DOM ====================
+        const appBody = document.getElementById("app-body");
+        const displayStage = document.getElementById("display-stage");
+        const panZoomLayer = document.getElementById("pan-zoom-layer");
+        const marqueeContainer = document.getElementById("marquee-container");
+        const marqueeText = document.getElementById("marquee-text");
+        const staticContainer = document.getElementById("static-container");
+        const staticText = document.getElementById("static-text");
+        const mirrorWrapper = document.getElementById("mirror-wrapper");
+        const messageInput = document.getElementById("message-input");
+        const topControls = document.getElementById("top-controls");
+        const bottomControls = document.getElementById("bottom-controls");
+        const focusHint = document.getElementById("focus-hint");
+        const floatingExitBtn = document.getElementById("floating-exit-btn");
+        const resetTransformBtn = document.getElementById("reset-transform-btn");
+        const zoomBadge = document.getElementById("zoom-badge");
+        const zoomBadgeText = document.getElementById("zoom-badge-text");
+        const templateModal = document.getElementById("template-modal");
+        const modalCategoryTabs = document.getElementById("modal-category-tabs");
+        const modalPhrasesList = document.getElementById("modal-phrases-list");
+
+        // ==================== INISIALISASI ====================
+        function init() {
+            applyUILanguage();
+            renderModalCategoryTabs();
+            renderModalPhrases();
+            messageInput.value = "";
+            setSpeed("slow");
+            setupGestures();
+            updateDisplay();
+            
+            window.addEventListener("resize", () => {
+                if (state.mode === "marquee") {
+                    recalculateMarqueeSpeed();
+                }
+            });
+
+            // Tutup modal dengan tombol Escape jika pakai keyboard
+            window.addEventListener("keydown", (e) => {
+                if (e.key === "Escape" && state.isTemplateOpen) {
+                    closeTemplateModal();
+                }
+            });
+        }
+
+        // ==================== KONTROL MODAL TEMPLATE ====================
+        function openTemplateModal() {
+            state.isTemplateOpen = true;
+            renderModalCategoryTabs();
+            renderModalPhrases();
+            templateModal.classList.remove("hidden");
+        }
+
+        function closeTemplateModal() {
+            state.isTemplateOpen = false;
+            templateModal.classList.add("hidden");
+        }
+
+        // ==================== PENGALIH BAHASA ANTARMUKA (ID <-> 日本語) ====================
+        function toggleUILanguage() {
+            state.uiLang = state.uiLang === "id" ? "ja" : "id";
+            applyUILanguage();
+            if (state.isTemplateOpen) {
+                renderModalCategoryTabs();
+                renderModalPhrases();
+            }
+            showToast(i18n[state.uiLang].toastLangChanged);
+        }
+
+        function applyUILanguage() {
+            const t = i18n[state.uiLang];
+            document.getElementById("ui-app-title").textContent = t.appTitle;
+            document.getElementById("ui-app-subtitle").textContent = t.appSubtitle;
+            document.getElementById("label-lang").textContent = t.langBtn;
+            document.getElementById("label-mode").textContent = state.mode === "static" ? t.modeStatic : t.modeMarquee;
+            document.getElementById("label-mirror").textContent = t.mirror;
+            document.getElementById("label-fullscreen").textContent = t.fullscreen;
+            document.getElementById("label-focus-hint").textContent = t.focusHint;
+            document.getElementById("label-exit-focus").textContent = t.exitFocus;
+            document.getElementById("label-reset-pos").textContent = t.resetPos;
+            document.getElementById("label-theme").textContent = t.themeLabel;
+            document.getElementById("label-speed").textContent = t.speedLabel;
+            document.getElementById("btn-speed-slow").textContent = t.speedSlow;
+            document.getElementById("btn-speed-normal").textContent = t.speedNormal;
+            document.getElementById("btn-speed-fast").textContent = t.speedFast;
+            document.getElementById("label-template-btn").textContent = t.templateBtn;
+            document.getElementById("modal-template-title").textContent = t.modalTitle;
+            document.getElementById("modal-template-subtitle").textContent = t.modalSubtitle;
+            messageInput.placeholder = t.inputPlaceholder;
+            document.getElementById("label-submit").textContent = t.submitBtn;
+        }
+
+        // ==================== RENDER KATEGORI & TEMPLATE KAIGO DI DALAM MODAL ====================
+        function renderModalCategoryTabs() {
+            modalCategoryTabs.innerHTML = "";
+            kaigoCategories.forEach(cat => {
+                const isActive = cat.id === state.activeCategory;
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = `shrink-0 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
+                    isActive
+                        ? "bg-yellow-400 text-black border-yellow-400 shadow-sm"
+                        : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+                }`;
+                
+                const labelText = state.uiLang === "ja" ? cat.labelJa : `${cat.labelId} (${cat.labelJa})`;
+                btn.innerHTML = `<i class="ph-bold ${cat.icon} text-base"></i><span>${labelText}</span>`;
+                
+                btn.onclick = () => {
+                    state.activeCategory = cat.id;
+                    renderModalCategoryTabs();
+                    renderModalPhrases();
+                };
+                modalCategoryTabs.appendChild(btn);
+            });
+        }
+
+        function renderModalPhrases() {
+            modalPhrasesList.innerHTML = "";
+            const activeCatObj = kaigoCategories.find(c => c.id === state.activeCategory) || kaigoCategories[0];
+            
+            activeCatObj.phrases.forEach(item => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "w-full text-left px-4 py-3 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 active:bg-yellow-400 active:text-black text-white border border-zinc-700/90 transition cursor-pointer flex items-center justify-between gap-3 group";
+                
+                if (state.uiLang === "id") {
+                    btn.innerHTML = `
+                        <div class="flex flex-col gap-0.5 min-w-0">
+                            <span class="text-sm sm:text-base font-black leading-snug text-yellow-300 group-active:text-black">${item.ja}</span>
+                            <span class="text-xs font-medium leading-tight text-zinc-300 group-active:text-zinc-900">${item.id}</span>
+                        </div>
+                        <i class="ph-bold ph-arrow-up-right text-lg text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
+                    `;
+                } else {
+                    btn.innerHTML = `
+                        <div class="flex flex-col gap-0.5 min-w-0">
+                            <span class="text-[11px] font-bold leading-tight text-zinc-400 group-active:text-zinc-800">${item.reading}</span>
+                            <span class="text-sm sm:text-base font-black leading-snug text-white group-active:text-black">${item.ja}</span>
+                        </div>
+                        <i class="ph-bold ph-arrow-up-right text-lg text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
+                    `;
+                }
+
+                btn.onclick = () => {
+                    state.text = item.ja;
+                    messageInput.value = item.ja;
+                    resetPanZoom();
+                    updateDisplay();
+                    closeTemplateModal();
+                };
+                modalPhrasesList.appendChild(btn);
+            });
+        }
+
+        // ==================== GESTURE ZOOM (CUBIT / SCROLL) & GESER (PAN) ====================
+        let zoomBadgeTimeout;
+        function applyPanZoomTransform(showIndicator = false) {
+            panZoomLayer.style.transform = `translate3d(${state.panX}px, ${state.panY}px, 0) scale(${state.scale})`;
+
+            const isModified = Math.abs(state.scale - 1) > 0.03 || Math.abs(state.panX) > 5 || Math.abs(state.panY) > 5;
+            if (isModified) {
+                resetTransformBtn.classList.remove("hidden");
+            } else {
+                resetTransformBtn.classList.add("hidden");
+            }
+
+            if (showIndicator) {
+                zoomBadgeText.textContent = `${Math.round(state.scale * 100)}%`;
+                zoomBadge.classList.remove("hidden");
+                clearTimeout(zoomBadgeTimeout);
+                zoomBadgeTimeout = setTimeout(() => {
+                    zoomBadge.classList.add("hidden");
+                }, 1100);
+            }
+        }
+
+        function resetPanZoom(e) {
+            if (e) e.stopPropagation();
+            state.scale = 1;
+            state.panX = 0;
+            state.panY = 0;
+            panZoomLayer.style.transition = "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+            applyPanZoomTransform(false);
+            setTimeout(() => {
+                panZoomLayer.style.transition = "";
+            }, 260);
+            if (e) {
+                showToast(i18n[state.uiLang].toastResetPos);
+            }
+        }
+
+        function setupGestures() {
+            let isDragging = false;
+            let hasMoved = false;
+            let startX = 0;
+            let startY = 0;
+            let initialPanX = 0;
+            let initialPanY = 0;
+
+            let isPinching = false;
+            let initialPinchDist = 0;
+            let initialScale = 1;
+            let lastTapTime = 0;
+
+            const getTouchDistance = (t1, t2) => {
+                return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            };
+
+            const clampScale = (s) => Math.min(Math.max(s, 0.4), 3.5);
+
+            // --- TOUCH EVENTS (HP & TABLET) ---
+            displayStage.addEventListener("touchstart", (e) => {
+                if (e.target.closest("button")) return;
+
+                if (e.touches.length === 2) {
+                    isPinching = true;
+                    isDragging = false;
+                    hasMoved = true;
+                    initialPinchDist = getTouchDistance(e.touches[0], e.touches[1]);
+                    initialScale = state.scale;
+                } else if (e.touches.length === 1) {
+                    isPinching = false;
+                    isDragging = true;
+                    hasMoved = false;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    initialPanX = state.panX;
+                    initialPanY = state.panY;
+                }
+            }, { passive: false });
+
+            displayStage.addEventListener("touchmove", (e) => {
+                if (isPinching && e.touches.length === 2) {
+                    e.preventDefault();
+                    const currentDist = getTouchDistance(e.touches[0], e.touches[1]);
+                    if (initialPinchDist > 0) {
+                        const ratio = currentDist / initialPinchDist;
+                        state.scale = clampScale(initialScale * ratio);
+                        applyPanZoomTransform(true);
+                    }
+                } else if (isDragging && e.touches.length === 1) {
+                    const dx = e.touches[0].clientX - startX;
+                    const dy = e.touches[0].clientY - startY;
+                    if (Math.hypot(dx, dy) > 8) {
+                        hasMoved = true;
+                        e.preventDefault();
+                        state.panX = initialPanX + dx;
+                        state.panY = initialPanY + dy;
+                        applyPanZoomTransform(false);
+                    }
+                }
+            }, { passive: false });
+
+            displayStage.addEventListener("touchend", (e) => {
+                if (e.touches.length < 2) {
+                    isPinching = false;
+                }
+                if (e.touches.length === 0) {
+                    if (isDragging && !hasMoved && !e.target.closest("button")) {
+                        const now = Date.now();
+                        if (now - lastTapTime < 280) {
+                            resetPanZoom();
+                            showToast(i18n[state.uiLang].toastResetPos);
+                            lastTapTime = 0;
+                        } else {
+                            lastTapTime = now;
+                            handleStageClick();
+                        }
+                    }
+                    isDragging = false;
+                }
+            });
+
+            // --- MOUSE EVENTS (DESKTOP / LAPTOP) ---
+            displayStage.addEventListener("mousedown", (e) => {
+                if (e.button !== 0 || e.target.closest("button")) return;
+                isDragging = true;
+                hasMoved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialPanX = state.panX;
+                initialPanY = state.panY;
+            });
+
+            window.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                if (Math.hypot(dx, dy) > 6) {
+                    hasMoved = true;
+                    state.panX = initialPanX + dx;
+                    state.panY = initialPanY + dy;
+                    applyPanZoomTransform(false);
+                }
+            });
+
+            window.addEventListener("mouseup", (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                if (!hasMoved && displayStage.contains(e.target) && !e.target.closest("button")) {
+                    handleStageClick();
+                }
+            });
+
+            displayStage.addEventListener("dblclick", (e) => {
+                if (e.target.closest("button")) return;
+                resetPanZoom();
+                showToast(i18n[state.uiLang].toastResetPos);
+            });
+
+            // --- WHEEL ZOOM (SCROLL MOUSE / TRACKPAD PINCH) ---
+            displayStage.addEventListener("wheel", (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+                state.scale = clampScale(state.scale * zoomFactor);
+                applyPanZoomTransform(true);
+            }, { passive: false });
+        }
+
+        // ==================== LOGIKA TAMPILAN & ANIMASI ====================
+        function updateDisplay() {
+            const t = i18n[state.uiLang];
+            const displayText = state.text.trim() || t.emptyFallback;
+            
+            marqueeText.textContent = displayText;
+            staticText.textContent = displayText;
+
+            Object.values(themes).forEach(th => {
+                appBody.classList.remove(th.bg, th.text);
+            });
+            const activeTheme = themes[state.theme];
+            appBody.classList.add(activeTheme.bg, activeTheme.text);
+
+            if (state.mode === "marquee") {
+                marqueeContainer.classList.remove("hidden");
+                staticContainer.classList.add("hidden");
+                document.getElementById("speed-control-group").classList.remove("opacity-40", "pointer-events-none");
+                recalculateMarqueeSpeed();
+            } else {
+                marqueeContainer.classList.add("hidden");
+                staticContainer.classList.remove("hidden");
+                document.getElementById("speed-control-group").classList.add("opacity-40", "pointer-events-none");
+            }
+
+            if (state.isMirrored) {
+                mirrorWrapper.classList.add("mirror-flip");
+            } else {
+                mirrorWrapper.classList.remove("mirror-flip");
+            }
+        }
+
+        function recalculateMarqueeSpeed() {
+            marqueeText.style.animationName = "none";
+            
+            requestAnimationFrame(() => {
+                const textWidth = marqueeText.offsetWidth;
+                const screenWidth = window.innerWidth;
+                const totalDistance = textWidth + screenWidth;
+                const pxPerSec = speedPxPerSec[state.speed];
+                
+                const durationSec = Math.max(3.5, totalDistance / pxPerSec);
+                
+                marqueeText.style.animationDuration = `${durationSec.toFixed(2)}s`;
+                marqueeText.style.animationName = "marquee-scroll";
+            });
+        }
+
+        // ==================== KONTROL INTERAKSI PENGGUNA ====================
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const t = i18n[state.uiLang];
+            const val = messageInput.value.trim();
+            if (val) {
+                state.text = val;
+                resetPanZoom();
+                updateDisplay();
+                messageInput.blur();
+                enterFocusMode();
+            } else {
+                messageInput.focus();
+                showToast(t.toastEmpty);
+            }
+        }
+
+        function clearInput() {
+            messageInput.value = "";
+            messageInput.focus();
+            showToast(i18n[state.uiLang].toastCleared);
+        }
+
+        function toggleScrollMode() {
+            const t = i18n[state.uiLang];
+            state.mode = state.mode === "marquee" ? "static" : "marquee";
+            
+            const label = document.getElementById("label-mode");
+            const icon = document.getElementById("icon-mode");
+            
+            if (state.mode === "marquee") {
+                label.textContent = t.modeMarquee;
+                icon.className = "ph-bold ph-arrows-left-right text-yellow-400 text-base";
+                showToast(t.toastModeMarquee);
+            } else {
+                label.textContent = t.modeStatic;
+                icon.className = "ph-bold ph-align-center-horizontal text-yellow-400 text-base";
+                showToast(t.toastModeStatic);
+            }
+            updateDisplay();
+        }
+
+        function toggleMirror() {
+            const t = i18n[state.uiLang];
+            state.isMirrored = !state.isMirrored;
+            const btn = document.getElementById("btn-mirror");
+            if (state.isMirrored) {
+                btn.classList.add("bg-yellow-400", "text-black", "border-yellow-400");
+                btn.classList.remove("bg-zinc-800", "text-zinc-300", "border-zinc-700");
+                showToast(t.toastMirrorOn);
+            } else {
+                btn.classList.remove("bg-yellow-400", "text-black", "border-yellow-400");
+                btn.classList.add("bg-zinc-800", "text-zinc-300", "border-zinc-700");
+                showToast(t.toastMirrorOff);
+            }
+            updateDisplay();
+        }
+
+        function setTheme(themeKey) {
+            state.theme = themeKey;
+            document.querySelectorAll(".theme-btn").forEach(btn => {
+                if (btn.dataset.theme === themeKey) {
+                    btn.classList.remove("opacity-70");
+                    btn.classList.add("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-950");
+                } else {
+                    btn.classList.add("opacity-70");
+                    btn.classList.remove("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-950");
+                }
+            });
+            updateDisplay();
+        }
+
+        function setSpeed(speedKey) {
+            state.speed = speedKey;
+            document.querySelectorAll(".speed-btn").forEach(btn => {
+                if (btn.dataset.speed === speedKey) {
+                    btn.classList.add("bg-zinc-700", "text-white");
+                    btn.classList.remove("text-zinc-400");
+                } else {
+                    btn.classList.remove("bg-zinc-700", "text-white");
+                    btn.classList.add("text-zinc-400");
+                }
+            });
+            if (state.mode === "marquee") {
+                recalculateMarqueeSpeed();
+            }
+        }
+
+        // ==================== MODE LAYAR PENUH / FOKUS ====================
+        function enterFocusMode() {
+            state.isFocusMode = true;
+            topControls.classList.add("ui-hidden-top");
+            bottomControls.classList.add("ui-hidden-bottom");
+            focusHint.classList.remove("hidden");
+            floatingExitBtn.classList.remove("hidden");
+
+            try {
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen && !document.fullscreenElement) {
+                    docEl.requestFullscreen().catch(() => {});
+                } else if (docEl.webkitRequestFullscreen && !document.webkitFullscreenElement) {
+                    docEl.webkitRequestFullscreen();
+                }
+            } catch (err) {}
+
+            if (state.mode === "marquee") {
+                setTimeout(recalculateMarqueeSpeed, 150);
+            }
+        }
+
+        function exitFocusMode(e) {
+            if (e) e.stopPropagation();
+            state.isFocusMode = false;
+            topControls.classList.remove("ui-hidden-top");
+            bottomControls.classList.remove("ui-hidden-bottom");
+            focusHint.classList.add("hidden");
+            floatingExitBtn.classList.add("hidden");
+
+            try {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitFullscreenElement) {
+                    document.webkitExitFullscreen();
+                }
+            } catch (err) {}
+
+            if (state.mode === "marquee") {
+                setTimeout(recalculateMarqueeSpeed, 150);
+            }
+        }
+
+        function handleStageClick() {
+            if (state.isFocusMode) {
+                exitFocusMode();
+            } else {
+                enterFocusMode();
+            }
+        }
+
+        let toastTimeout;
+        function showToast(msg) {
+            const toast = document.getElementById("toast-msg");
+            toast.textContent = msg;
+            toast.classList.remove("opacity-0");
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add("opacity-0");
+            }, 1800);
+        }
+
+        window.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>
