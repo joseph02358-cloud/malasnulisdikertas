@@ -1,1181 +1,833 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>BantuBicara Kaigo - 介護コミュニケーションボード</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Noto Sans JP (sangat jelas untuk lansia Jepang) & Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Noto+Sans+JP:wght@700;800;900&display=swap" rel="stylesheet">
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>BantuBicara Kaigo — 介護コミュニケーション</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-color: #000000;
+      --text-color: #FFE600;
+      --marquee-duration: 12s;
+    }
 
-    <style>
-        /* Pengaturan tinggi viewport dinamis 100dvh agar pas 100% di HP tanpa terpotong bar browser */
-        body, html {
-            font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Inter', sans-serif;
-            height: 100dvh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            overscroll-behavior: none;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: none;
-        }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-        /* Animasi Marquee yang mulus menggunakan GPU acceleration */
-        @keyframes marquee-scroll {
-            0% {
-                transform: translate3d(100%, 0, 0);
-            }
-            100% {
-                transform: translate3d(-100%, 0, 0);
-            }
-        }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+      overscroll-behavior: none;
+    }
 
-        .marquee-track {
-            display: inline-block;
-            white-space: nowrap;
-            will-change: transform;
-            animation-name: marquee-scroll;
-            animation-timing-function: linear;
-            animation-iteration-count: infinite;
-        }
+    #app-root {
+      width: 100%;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-color);
+      transition: background-color 0.2s ease, color 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
 
-        /* Mode Cermin (Mirror Mode) */
-        .mirror-flip {
-            transform: scaleX(-1);
-        }
+    .display-font {
+      font-family: 'Noto Sans JP', 'Plus Jakarta Sans', sans-serif;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
 
-        /* Custom scrollbar halus untuk modal */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+    /* Area Tampilan Teks Utama */
+    #stage {
+      flex: 1 1 auto;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
 
-        /* Transisi UI kontrol */
-        .ui-panel {
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
-        }
-        .ui-hidden-top {
-            transform: translateY(-100%);
-            opacity: 0;
-            pointer-events: none;
-        }
-        .ui-hidden-bottom {
-            transform: translateY(100%);
-            opacity: 0;
-            pointer-events: none;
-        }
-    </style>
+    #stage:active {
+      cursor: grabbing;
+    }
+
+    /* Wadah Transformasi (Geser & Zoom) */
+    #transform-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-origin: center center;
+      will-change: transform;
+    }
+
+    /* Wadah Rotasi 90 Derajat */
+    #rotation-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+      padding: 16px;
+      text-align: center;
+    }
+
+    /* Mode Teks Diam (Statis) */
+    .static-text {
+      font-size: clamp(2.4rem, 11vw, 7.5rem);
+      line-height: 1.25;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+    }
+
+    /* Mode Teks Berjalan (Marquee) */
+    .marquee-track {
+      display: flex;
+      width: max-content;
+      white-space: nowrap;
+      align-items: center;
+      animation: marquee-scroll var(--marquee-duration) linear infinite;
+    }
+
+    .marquee-item {
+      font-size: clamp(3.2rem, 15vw, 9.5rem);
+      line-height: 1.15;
+      padding-right: 18vw;
+    }
+
+    @keyframes marquee-scroll {
+      0% {
+        transform: translateX(0%);
+      }
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+
+    /* Efek Cermin */
+    .mirrored {
+      transform: scaleX(-1);
+    }
+
+    /* Kontrol Melayang */
+    .hud-transition {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .hud-hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateY(-8px);
+    }
+
+    .hud-bottom-hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateY(100%);
+    }
+
+    /* Scrollbar halus untuk modal template */
+    .clean-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .clean-scroll::-webkit-scrollbar-thumb {
+      background: rgba(128, 128, 128, 0.4);
+      border-radius: 999px;
+    }
+  </style>
 </head>
-<body class="bg-black text-yellow-400 flex flex-col justify-between select-none transition-colors duration-300" id="app-body">
-
-    <!-- ==================== HEADER / PENGATURAN ATAS RINGKAS ==================== -->
-    <header id="top-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-1.5 shadow-lg shrink-0">
-        <!-- Brand / Logo Ringkas -->
-        <div class="flex items-center gap-1.5 min-w-0 shrink">
-            <div class="w-8 h-8 rounded-xl bg-yellow-400 text-black flex items-center justify-center font-black text-lg shadow-sm shrink-0">
-                <i class="ph-bold ph-hand-heart"></i>
-            </div>
-            <div class="truncate">
-                <h1 id="ui-app-title" class="text-white font-extrabold text-xs sm:text-sm leading-tight truncate">BantuBicara</h1>
-                <p id="ui-app-subtitle" class="text-zinc-400 text-[10px] font-medium truncate hidden sm:block">Kaigo & Tunarungu</p>
-            </div>
-        </div>
-
-        <!-- Bar Aksi Cepat Header (Semua muat dalam 1 baris di HP kecil) -->
-        <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <!-- Pengalih Bahasa (ID <-> 日本語) -->
-            <button type="button" id="btn-lang-toggle" onclick="toggleUILanguage()" class="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 text-[11px] sm:text-xs font-black flex items-center gap-1 border border-yellow-400/40 transition" title="Ganti Bahasa / 言語切替">
-                <i class="ph-bold ph-translate text-sm"></i>
-                <span id="label-lang">日本語</span>
-            </button>
-
-            <!-- Tombol Warna / Tema (Membuka Popover Tema & Mode) -->
-            <button type="button" id="btn-theme-toggle" onclick="toggleQuickSettings()" class="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white text-[11px] sm:text-xs font-bold flex items-center gap-1 border border-zinc-700 transition" title="Tema & Mode / 配色・表示設定">
-                <span id="theme-dot-preview" class="w-3.5 h-3.5 rounded-full bg-yellow-400 border border-white/60 shrink-0"></span>
-                <span id="label-theme-btn" class="hidden xs:inline sm:inline">Tema</span>
-                <i class="ph-bold ph-caret-down text-[10px] text-zinc-400"></i>
-            </button>
-
-            <!-- Tombol Template Kaigo -->
-            <button type="button" onclick="openTemplateModal()" class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 text-[11px] sm:text-xs font-black flex items-center gap-1 border border-yellow-400/50 transition" title="Template Kaigo / 定型文">
-                <i class="ph-bold ph-chats-teardrop text-sm"></i>
-                <span id="label-template-btn">Template</span>
-            </button>
-
-            <!-- Tombol Layar Penuh -->
-            <button type="button" onclick="enterFocusMode()" class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-[11px] sm:text-xs font-black flex items-center gap-1 shadow-sm transition" title="Layar Penuh / 全画面">
-                <i class="ph-bold ph-corners-out text-sm"></i>
-                <span id="label-fullscreen" class="hidden sm:inline">Layar Penuh</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- ==================== POPOVER PENGATURAN CEPAT (WARNA, MODE DIAM/BERJALAN, CERMIN) ==================== -->
-    <div id="quick-settings-popover" class="hidden fixed top-12 right-2.5 sm:right-4 z-40 w-72 sm:w-80 rounded-2xl bg-zinc-900/95 backdrop-blur-md border border-zinc-700 p-3 shadow-2xl flex flex-col gap-3">
-        <!-- Pilihan Tema Kontras Tinggi -->
-        <div class="flex items-center justify-between">
-            <span id="label-theme" class="text-zinc-300 text-xs font-bold">Warna Layar:</span>
-            <div class="flex items-center gap-1.5">
-                <button type="button" onclick="setTheme('yellow-black')" data-theme="yellow-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-yellow-400 flex items-center justify-center ring-2 ring-yellow-400 ring-offset-2 ring-offset-zinc-900" title="Hitam & Kuning">
-                    <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-                </button>
-                <button type="button" onclick="setTheme('white-black')" data-theme="white-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-white flex items-center justify-center opacity-75 hover:opacity-100" title="Hitam & Putih">
-                    <span class="w-3 h-3 rounded-full bg-white"></span>
-                </button>
-                <button type="button" onclick="setTheme('white-navy')" data-theme="white-navy" class="theme-btn w-7 h-7 rounded-full bg-blue-950 border-2 border-white flex items-center justify-center opacity-75 hover:opacity-100" title="Biru Tua & Putih">
-                    <span class="w-3 h-3 rounded-full bg-white"></span>
-                </button>
-                <button type="button" onclick="setTheme('black-white')" data-theme="black-white" class="theme-btn w-7 h-7 rounded-full bg-white border-2 border-zinc-400 flex items-center justify-center opacity-75 hover:opacity-100" title="Putih & Hitam">
-                    <span class="w-3 h-3 rounded-full bg-black"></span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Mode Tampilan (Diam vs Berjalan) & Cermin -->
-        <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
-            <button type="button" id="btn-mode-toggle" onclick="toggleScrollMode()" class="flex-1 py-2 px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 border border-zinc-700 transition">
-                <i id="icon-mode" class="ph-bold ph-align-center-horizontal text-yellow-400 text-sm"></i>
-                <span id="label-mode">Diam</span>
-            </button>
-            <button type="button" id="btn-mirror" onclick="toggleMirror()" class="py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-zinc-700 transition">
-                <i class="ph-bold ph-flip-horizontal text-sm"></i>
-                <span id="label-mirror">Cermin</span>
-            </button>
-        </div>
-
-        <!-- Kecepatan Marquee (Aktif saat Mode Berjalan) -->
-        <div id="speed-control-group" class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800 opacity-40 pointer-events-none transition-opacity">
-            <span id="label-speed" class="text-zinc-400 text-xs font-bold shrink-0">Kecepatan:</span>
-            <div class="flex bg-zinc-950 p-0.5 rounded-xl border border-zinc-800">
-                <button type="button" onclick="setSpeed('slow')" data-speed="slow" id="btn-speed-slow" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold bg-zinc-700 text-white transition">Lambat</button>
-                <button type="button" onclick="setSpeed('normal')" data-speed="normal" id="btn-speed-normal" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-zinc-400 hover:text-white transition">Sedang</button>
-                <button type="button" onclick="setSpeed('fast')" data-speed="fast" id="btn-speed-fast" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-zinc-400 hover:text-white transition">Cepat</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== AREA TAMPILAN UTAMA (STAGE - ZOOM, GESER & PUTAR 90°) ==================== -->
-    <main id="display-stage" class="relative flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
-        
-        <!-- Layer Transformasi Zoom (Cubit) & Pan (Geser) -->
-        <div id="pan-zoom-layer" class="w-full h-full flex items-center justify-center will-change-transform origin-center">
-            <!-- Wadah Rotasi 0° / 90° (Dimensi ditukar otomatis saat rotasi 90° agar teks lebar penuh menyamping) -->
-            <div id="rotation-box" class="flex items-center justify-center transition-transform duration-300 ease-out">
-                <!-- Container Mirror Wrapper -->
-                <div id="mirror-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-200">
-                    
-                    <!-- MODE 1: TEKS BERJALAN (MARQUEE) -->
-                    <div id="marquee-container" class="hidden w-full overflow-hidden flex items-center">
-                        <div id="marquee-text" class="marquee-track font-black tracking-wide leading-none" style="font-size: clamp(3.5rem, 16vh, 9rem);">
-                            おはようございます。よく眠れましたか？
-                        </div>
-                    </div>
-
-                    <!-- MODE 2: TEKS DIAM / STATIS (Default untuk Lansia) -->
-                    <div id="static-container" class="w-full h-full flex items-center justify-center text-center px-4 sm:px-8">
-                        <p id="static-text" class="font-black tracking-normal leading-snug break-words max-w-full" style="font-size: clamp(2.4rem, 8.2vw, 6rem);">
-                            おはようございます。よく眠れましたか？
-                        </p>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- Bar Tombol Melayang di Sudut Kiri Atas Area Teks (Putar 90° & Reset Posisi) -->
-        <div id="stage-floating-tools" class="absolute top-3 left-3 z-30 flex items-center gap-1.5">
-            <!-- Tombol Putar Layar 90° (Selalu mudah dijangkau & menonjol saat di-zoom) -->
-            <button type="button" id="btn-rotate-screen" onclick="toggleScreenRotation(event)" class="px-3 py-2 rounded-2xl bg-zinc-900/75 hover:bg-zinc-800 active:scale-95 backdrop-blur-md border border-zinc-700/80 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition opacity-85 hover:opacity-100" title="Putar Tampilan 90° / 画面回転">
-                <i id="icon-rotate" class="ph-bold ph-device-rotate text-yellow-400 text-base transition-transform duration-300"></i>
-                <span id="label-rotate">Putar</span>
-            </button>
-
-            <!-- Tombol Reset Posisi & Zoom (Muncul saat teks di-zoom atau digeser) -->
-            <button type="button" id="reset-transform-btn" onclick="resetPanZoom(event)" class="hidden px-3 py-2 rounded-2xl bg-zinc-900/85 hover:bg-zinc-800 active:scale-95 backdrop-blur-md border border-yellow-400/50 text-yellow-400 text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition">
-                <i class="ph-bold ph-arrows-in-cardinal text-base"></i>
-                <span id="label-reset-pos">Reset</span>
-            </button>
-        </div>
-
-        <!-- Badge Persentase Zoom Sementara (Muncul saat cubit zoom in/out) -->
-        <div id="zoom-badge" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-40 px-3 py-1 rounded-full bg-zinc-900/90 backdrop-blur-md border border-zinc-700 text-yellow-400 text-xs font-black flex items-center gap-1.5 shadow-lg pointer-events-none">
-            <i class="ph-bold ph-magnifying-glass-plus"></i>
-            <span id="zoom-badge-text">100%</span>
-        </div>
-
-        <!-- Tombol Keluar Mengambang (Pojok Kanan Atas saat Mode Layar Penuh) -->
-        <button type="button" id="floating-exit-btn" onclick="exitFocusMode(event)" class="hidden absolute top-3 right-3 z-30 px-3.5 py-2 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 active:scale-95 backdrop-blur-md border border-zinc-700/80 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition opacity-85 hover:opacity-100">
-            <i class="ph-bold ph-pencil-simple text-yellow-400 text-base"></i>
-            <span id="label-exit-focus">Edit Teks</span>
+<body>
+  <div id="app-root">
+    <!-- BAR ATAS -->
+    <header id="top-bar" class="hud-transition z-20 flex items-center justify-between gap-1.5 px-2.5 pt-2 pb-1.5 bg-black/75 backdrop-blur-md border-b border-white/15 text-white shrink-0">
+      <!-- Kiri: Bahasa & Tema Kontras -->
+      <div class="flex items-center gap-1.5">
+        <button id="btn-lang" type="button" class="px-2.5 py-1.5 rounded-lg bg-white/15 active:bg-white/25 text-xs font-extrabold tracking-wide border border-white/20">
+          ID / 日本語
         </button>
 
-        <!-- Indikator Petunjuk Halus di Bawah (Hanya saat Mode Layar Penuh) -->
-        <div id="focus-hint" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-zinc-900/70 backdrop-blur-md border border-zinc-700/60 text-white/90 text-[11px] font-bold flex items-center gap-1.5 shadow-lg pointer-events-none whitespace-nowrap">
-            <i class="ph-bold ph-hand-tap text-yellow-400 text-sm"></i>
-            <span id="label-focus-hint">Ketuk layar: Edit • Cubit: Zoom • Putar: 90°</span>
+        <!-- Pilihan Warna Kontras -->
+        <div class="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/15">
+          <button type="button" data-theme="yellow" aria-label="Hitam Kuning" class="theme-btn w-5 h-5 rounded-full bg-[#FFE600] border-2 border-white shadow"></button>
+          <button type="button" data-theme="white" aria-label="Hitam Putih" class="theme-btn w-5 h-5 rounded-full bg-white border border-gray-400"></button>
+          <button type="button" data-theme="light" aria-label="Putih Hitam" class="theme-btn w-5 h-5 rounded-full bg-gray-100 border-2 border-black"></button>
+          <button type="button" data-theme="navy" aria-label="Biru Tua Putih" class="theme-btn w-5 h-5 rounded-full bg-[#0A2540] border border-sky-300"></button>
         </div>
+      </div>
+
+      <!-- Kanan: Mode Diam/Berjalan, Cermin, Layar Penuh -->
+      <div class="flex items-center gap-1">
+        <button id="btn-motion" type="button" class="px-2 py-1.5 rounded-lg bg-white/15 active:bg-white/25 text-xs font-bold border border-white/15">
+          Diam
+        </button>
+        <button id="btn-speed" type="button" class="hidden px-2 py-1.5 rounded-lg bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/30">
+          1x
+        </button>
+        <button id="btn-mirror" type="button" title="Mode Cermin" class="px-2 py-1.5 rounded-lg bg-white/15 active:bg-white/25 text-xs font-bold border border-white/15">
+          ⇄
+        </button>
+        <button id="btn-fullscreen" type="button" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 active:bg-emerald-600 text-black text-xs font-extrabold">
+          Penuh
+        </button>
+      </div>
+    </header>
+
+    <!-- AREA LAYAR TEKS UTAMA -->
+    <main id="stage">
+      <!-- Tombol Aksi Cepat di Pojok Kiri Atas Stage (Tetap mudah dijangkau, termasuk saat layar penuh) -->
+      <div id="floating-tools" class="z-20 absolute top-2.5 left-2.5 flex items-center gap-1.5">
+        <button id="btn-rotate" type="button" class="px-2.5 py-1.5 rounded-full bg-neutral-900/80 text-white border border-white/25 backdrop-blur-md text-xs font-bold shadow-lg active:scale-95 transition flex items-center gap-1">
+          <span>↻</span>
+          <span id="lbl-rotate">Putar</span>
+        </button>
+        <button id="btn-reset-view" type="button" class="hidden px-2.5 py-1.5 rounded-full bg-amber-400 text-black text-xs font-extrabold shadow-lg active:scale-95 transition">
+          Reset
+        </button>
+      </div>
+
+      <!-- Indikator Persentase Zoom Sementara -->
+      <div id="zoom-badge" class="pointer-events-none opacity-0 transition-opacity duration-200 z-20 absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/80 text-white border border-white/20 text-xs font-extrabold">
+        100%
+      </div>
+
+      <!-- Petunjuk Singkat Saat Mode Penuh -->
+      <div id="fullscreen-hint" class="pointer-events-none opacity-0 transition-opacity duration-300 z-20 absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/75 text-white/90 border border-white/15 text-[11px] font-semibold whitespace-nowrap">
+        Ketuk layar untuk menampilkan menu
+      </div>
+
+      <!-- Lapisan Transformasi (Pan & Zoom) -->
+      <div id="transform-layer">
+        <div id="rotation-box">
+          <div id="mirror-wrapper">
+            <div id="text-output" class="display-font static-text">
+              おはようございます。今日の体調はいかがですか？
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
-    <!-- ==================== BAR INPUT BAWAH SUPER RINGKAS (1 BARIS + KEYBOARD INSTAN) ==================== -->
-    <section id="bottom-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 px-2.5 sm:px-4 py-2 shrink-0 shadow-2xl">
-        <form onsubmit="handleFormSubmit(event)" class="flex items-center gap-1.5 sm:gap-2">
-            <!-- Tombol Edit Instan (Memfokuskan kotak input & memunculkan keyboard HP seketika) -->
-            <button 
-                type="button" 
-                onclick="focusKeyboardInput()" 
-                class="h-11 sm:h-12 px-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-zinc-700 transition shrink-0"
-                title="Ketik Teks / 文字入力"
-            >
-                <i class="ph-bold ph-keyboard text-lg"></i>
-                <span id="label-edit-btn">Edit</span>
-            </button>
+    <!-- BAR BAWAH RINGKAS (1 BARIS, ANTI TERPOTONG) -->
+    <footer id="bottom-bar" class="hud-transition z-20 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-black/85 backdrop-blur-md border-t border-white/15 text-white shrink-0">
+      <div class="flex items-center gap-1.5 w-full">
+        <!-- Tombol Template -->
+        <button id="btn-open-template" type="button" class="shrink-0 px-2.5 py-2.5 rounded-xl bg-sky-500 active:bg-sky-600 text-black text-xs font-extrabold flex items-center gap-1">
+          <span>📋</span>
+          <span id="lbl-template">Template</span>
+        </button>
 
-            <!-- Kotak Input Teks Utama dengan Tombol Hapus (✕) di dalam -->
-            <div class="relative flex-1 min-w-0">
-                <input 
-                    type="text" 
-                    id="message-input" 
-                    enterkeyhint="done"
-                    placeholder="Ketik pesan di sini..." 
-                    autocomplete="off"
-                    class="w-full h-11 sm:h-12 pl-3.5 pr-9 rounded-2xl bg-zinc-800 text-white placeholder-zinc-400 text-sm sm:text-base font-bold border-2 border-zinc-700 focus:border-yellow-400 focus:outline-none transition"
-                >
-                <!-- Tombol Hapus (✕) di dalam kotak input -->
-                <button 
-                    type="button" 
-                    onclick="clearInput()" 
-                    id="btn-clear"
-                    title="Hapus / 消去"
-                    class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-zinc-700/80 hover:bg-red-500/90 text-zinc-200 hover:text-white flex items-center justify-center transition active:scale-90"
-                >
-                    <i class="ph-bold ph-x text-sm"></i>
-                </button>
-            </div>
+        <!-- Tombol Edit (Satu-satunya pemicu keyboard selain mengetuk kotak input) -->
+        <button id="btn-edit-focus" type="button" class="shrink-0 px-2.5 py-2.5 rounded-xl bg-white/15 active:bg-white/25 text-white border border-white/20 text-xs font-extrabold flex items-center gap-1">
+          <span>✏️</span>
+          <span id="lbl-edit">Edit</span>
+        </button>
 
-            <!-- Tombol Kirim / Selesai (OK / 決定) -->
-            <button 
-                type="submit" 
-                class="h-11 sm:h-12 px-3.5 sm:px-5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-md transition shrink-0"
-            >
-                <i class="ph-bold ph-check text-lg"></i>
-                <span id="label-submit">OK</span>
-            </button>
-        </form>
-    </section>
-
-    <!-- ==================== MODAL OVERLAY TEMPLATE KAIGO ==================== -->
-    <div id="template-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-        <!-- Latar Belakang Gelap Blur -->
-        <div onclick="closeTemplateModal()" class="fixed inset-0 bg-black/75 backdrop-blur-sm"></div>
-
-        <!-- Kontainer Sheet / Kartu Modal -->
-        <div class="relative z-10 w-full sm:max-w-2xl max-h-[82dvh] bg-zinc-900 border-t sm:border border-zinc-700 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-            
-            <!-- Header Modal -->
-            <div class="px-4 py-3 bg-zinc-950/90 border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-yellow-400/15 text-yellow-400 flex items-center justify-center shrink-0">
-                        <i class="ph-bold ph-chats-teardrop text-lg"></i>
-                    </div>
-                    <div>
-                        <h2 id="modal-template-title" class="text-white font-black text-sm sm:text-base leading-tight">Template Komunikasi Kaigo</h2>
-                        <p id="modal-template-subtitle" class="text-zinc-400 text-[11px] font-medium">Ketuk kalimat untuk tampilkan ke layar</p>
-                    </div>
-                </div>
-                <button type="button" onclick="closeTemplateModal()" class="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-90" title="Tutup / 閉じる">
-                    <i class="ph-bold ph-x text-base"></i>
-                </button>
-            </div>
-
-            <!-- Bar Kategori Kaigo di dalam Modal -->
-            <div id="modal-category-tabs" class="px-3 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0" style="touch-action: pan-x;">
-                <!-- Diisi otomatis via JS -->
-            </div>
-
-            <!-- Daftar Kalimat Template Kaigo (Bisa di-scroll vertikal di HP kecil) -->
-            <div id="modal-phrases-list" class="p-3 overflow-y-auto flex flex-col gap-2 bg-zinc-900/95" style="touch-action: pan-y;">
-                <!-- Diisi otomatis via JS -->
-            </div>
-
+        <!-- Kotak Input Teks + Tombol Hapus -->
+        <div class="relative flex-1 min-w-0 flex items-center">
+          <input
+            id="text-input"
+            type="text"
+            value="おはようございます。今日の体調はいかがですか？"
+            placeholder="Ketik pesan di sini..."
+            autocomplete="off"
+            class="w-full pl-3 pr-8 py-2.5 rounded-xl bg-neutral-900 text-white placeholder-neutral-400 border border-white/25 focus:border-amber-400 focus:outline-none text-sm font-bold"
+          />
+          <button id="btn-clear" type="button" aria-label="Hapus teks" class="absolute right-1.5 w-6 h-6 rounded-full bg-white/15 active:bg-white/30 text-white text-xs font-bold flex items-center justify-center">
+            ✕
+          </button>
         </div>
+
+        <!-- Tombol OK / Selesai Ketik -->
+        <button id="btn-ok" type="button" class="shrink-0 px-3 py-2.5 rounded-xl bg-amber-400 active:bg-amber-500 text-black text-xs font-extrabold">
+          OK
+        </button>
+      </div>
+    </footer>
+
+    <!-- MODAL POPUP TEMPLATE KAIGO -->
+    <div id="template-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4">
+      <div class="bg-neutral-900 text-white w-full max-w-xl mx-auto rounded-t-2xl sm:rounded-2xl border border-white/20 flex flex-col max-h-[82dvh] shadow-2xl overflow-hidden">
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/15 shrink-0">
+          <h2 id="modal-title" class="text-sm font-extrabold tracking-wide text-amber-400">
+            Template Komunikasi Kaigo (介護定型文)
+          </h2>
+          <button id="btn-close-template" type="button" class="w-8 h-8 rounded-full bg-white/15 active:bg-white/25 text-white font-bold flex items-center justify-center">
+            ✕
+          </button>
+        </div>
+
+        <!-- Tab Kategori -->
+        <div id="category-tabs" class="flex items-center gap-1.5 px-3 py-2.5 overflow-x-auto clean-scroll border-b border-white/10 shrink-0">
+          <!-- Diisi via JS -->
+        </div>
+
+        <!-- Daftar Frasa -->
+        <div id="phrase-list" class="p-3 overflow-y-auto clean-scroll space-y-2 flex-1">
+          <!-- Diisi via JS -->
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Notifikasi Toast Mini -->
-    <div id="toast-msg" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-xl bg-zinc-800/95 text-white text-xs font-bold border border-zinc-700 shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 whitespace-nowrap">
-        Pesan diperbarui
-    </div>
+  <script>
+    // ==============================
+    // DATA TEMPLATE KAIGO DWIBAHASA
+    // ==============================
+    const KAIGO_TEMPLATES = [
+      {
+        id: "greeting",
+        labelID: "Sapaan & Kondisi",
+        labelJP: "挨拶・体調",
+        phrases: [
+          { jp: "おはようございます。よく眠れましたか？", reading: "おはようございます。よく ねむれましたか？", id: "Selamat pagi. Apakah tidurnya nyenyak?" },
+          { jp: "今日の体調はいかがですか？", reading: "きょうの たいちょうは いかがですか？", id: "Bagaimana kondisi badan hari ini?" },
+          { jp: "どこか痛いところはありますか？", reading: "どこか いたいところは ありますか？", id: "Apakah ada bagian tubuh yang sakit?" },
+          { jp: "熱と血圧を測りますね。", reading: "ねつと けつあつを はかりますね。", id: "Saya ukur suhu tubuh dan tekanan darahnya ya." },
+          { jp: "暑くないですか？寒くないですか？", reading: "あつくないですか？ さむくないですか？", id: "Apakah tidak kepanasan? Tidak kedinginan?" },
+          { jp: "おやすみなさい。ゆっくり休んでください。", reading: "おやすみなさい。ゆっくり やすんでください。", id: "Selamat malam. Silakan beristirahat dengan tenang." }
+        ]
+      },
+      {
+        id: "meal",
+        labelID: "Makan & Minum",
+        labelJP: "食事・水分",
+        phrases: [
+          { jp: "お食事の準備ができましたよ。", reading: "おしょくじの じゅんびが できましたよ。", id: "Makanannya sudah siap ya." },
+          { jp: "ゆっくりよく噛んで食べてください。", reading: "ゆっくり よく かんで たべてください。", id: "Silakan makan pelan-pelan dan kunyah dengan baik." },
+          { jp: "お茶を少し飲みましょうか。", reading: "おちゃを すこし のみましょうか。", id: "Mari minum teh sedikit ya." },
+          { jp: "お薬を飲む時間ですよ。", reading: "おくすりを のむ じかんですよ。", id: "Sudah waktunya minum obat ya." },
+          { jp: "ごちそうさまでした。美味しかったですか？", reading: "ごちそうさまでした。おいしかったですか？", id: "Terima kasih atas hidangannya. Apakah enak?" }
+        ]
+      },
+      {
+        id: "hygiene",
+        labelID: "Toilet & Mandi",
+        labelJP: "排泄・入浴",
+        phrases: [
+          { jp: "トイレに行きましょうか？", reading: "トイレに いきましょうか？", id: "Mau pergi ke toilet?" },
+          { jp: "終わったらナースコールを押してください。", reading: "おわったら ナースコールを おしてください。", id: "Kalau sudah selesai, tekan tombol panggilan perawat ya." },
+          { jp: "お風呂の時間ですよ。入りましょう。", reading: "おふろの じかんですよ。はいりましょう。", id: "Sudah waktunya mandi. Mari kita mandi." },
+          { jp: "お湯の温度はちょうどいいですか？", reading: "おゆの おんどは ちょうどいいですか？", id: "Apakah suhu air hangatnya sudah pas?" },
+          { jp: "お着替えをしましょうね。", reading: "おきがえを しましょうね。", id: "Mari kita ganti baju ya." }
+        ]
+      },
+      {
+        id: "mobility",
+        labelID: "Perpindahan & Aman",
+        labelJP: "移動・安全",
+        phrases: [
+          { jp: "危ないのでゆっくり立ちましょう。", reading: "あぶないので ゆっくり たちましょう。", id: "Berbahaya, mari berdiri pelan-pelan." },
+          { jp: "手すりにしっかりつかまってください。", reading: "てすりに しっかり つかまってください。", id: "Tolong berpegangan erat pada pegangan tangan." },
+          { jp: "車椅子に移りますね。いち、にの、さん。", reading: "くるまいすに うつりますね。いち、にの、さん。", id: "Pindah ke kursi roda ya. Satu, dua, tiga." },
+          { jp: "足元に気をつけて歩きましょう。", reading: "あしもとに きをつけて あるきましょう。", id: "Mari berjalan sambil berhati-hati melihat langkah kaki." },
+          { jp: "ベッドの柵を上げますね。", reading: "ベッドの さくを あげますね。", id: "Saya naikkan pagar tempat tidurnya ya." }
+        ]
+      },
+      {
+        id: "reassure",
+        labelID: "Penenang & Respon",
+        labelJP: "声かけ・安心",
+        phrases: [
+          { jp: "大丈夫ですよ。私がそばにいますから安心してください。", reading: "だいじょうぶですよ。わたしが そばに いますから あんしんしてください。", id: "Tidak apa-apa. Saya ada di samping Anda, jadi tenang saja." },
+          { jp: "少し待っていてくださいね。すぐ戻ります。", reading: "すこし まっていてくださいね。すぐ もどります。", id: "Tunggu sebentar ya. Saya akan segera kembali." },
+          { jp: "分かりました。ありがとうございます。", reading: "わかりました。ありがとうございます。", id: "Saya mengerti. Terima kasih banyak." },
+          { jp: "もう一度ゆっくり書いて見せますね。", reading: "もういちど ゆっくり かいて みせますね。", id: "Saya tuliskan pelan-pelan sekali lagi ya." },
+          { jp: "何かあればいつでも教えてくださいね。", reading: "なにか あれば いつでも おしえてくださいね。", id: "Kalau ada apa-apa, beri tahu saya kapan saja ya." }
+        ]
+      }
+    ];
 
-    <script>
-        // ==================== DATA & STATE APLIKASI ====================
-        const state = {
-            uiLang: "id", // 'id' atau 'ja'
-            text: "おはようございます。よく眠れましたか？",
-            mode: "static", // 'static' (Diam) atau 'marquee' (Berjalan)
-            theme: "yellow-black",
-            speed: "slow",
-            activeCategory: "greeting",
-            isMirrored: false,
-            isFocusMode: false,
-            isTemplateOpen: false,
-            isQuickSettingsOpen: false,
-            isRotated90: false, // Rotasi kanvas 90 derajat (landscape virtual)
-            // State Zoom & Geser (Pan)
-            scale: 1,
-            panX: 0,
-            panY: 0
-        };
+    const THEMES = {
+      yellow: { bg: "#000000", text: "#FFE600" },
+      white:  { bg: "#000000", text: "#FFFFFF" },
+      light:  { bg: "#F8FAFC", text: "#0F172A" },
+      navy:   { bg: "#0A2540", text: "#FFFFFF" }
+    };
 
-        // Kamus Antarmuka Dwibahasa (Indonesia & Jepang)
-        const i18n = {
-            id: {
-                appTitle: "BantuBicara",
-                appSubtitle: "Kaigo & Tunarungu",
-                langBtn: "日本語",
-                themeBtn: "Tema",
-                templateBtn: "Template",
-                fullscreen: "Layar Penuh",
-                rotateBtn: "Putar",
-                rotateBtnActive: "Normal",
-                resetPos: "Reset",
-                exitFocus: "Edit Teks",
-                focusHint: "Ketuk layar: Edit • Cubit: Zoom • Putar: 90°",
-                themeLabel: "Warna Layar:",
-                modeStatic: "Diam",
-                modeMarquee: "Berjalan",
-                mirror: "Cermin",
-                speedLabel: "Kecepatan:",
-                speedSlow: "Lambat",
-                speedNormal: "Sedang",
-                speedFast: "Cepat",
-                editBtn: "Edit",
-                inputPlaceholder: "Ketik pesan atau pilih Template...",
-                submitBtn: "OK",
-                modalTitle: "Template Komunikasi Kaigo",
-                modalSubtitle: "Ketuk kalimat untuk tampilkan ke layar",
-                emptyFallback: "Silakan ketik atau pilih pesan...",
-                toastCleared: "Teks dihapus",
-                toastEmpty: "Silakan ketik atau pilih pesan",
-                toastModeStatic: "Mode: Teks Diam",
-                toastModeMarquee: "Mode: Teks Berjalan",
-                toastMirrorOn: "Mode Cermin: Aktif",
-                toastMirrorOff: "Mode Cermin: Nonaktif",
-                toastLangChanged: "Bahasa: Indonesia",
-                toastResetPos: "Ukuran & posisi dikembalikan",
-                toastRotatedOn: "Layar diputar 90° (Landscape)",
-                toastRotatedOff: "Layar kembali normal (0°)"
-            },
-            ja: {
-                appTitle: "介護筆談ボード",
-                appSubtitle: "高齢者・難聴者向け",
-                langBtn: "ID語",
-                themeBtn: "配色",
-                templateBtn: "定型文",
-                fullscreen: "全画面",
-                rotateBtn: "回転",
-                rotateBtnActive: "元に戻す",
-                resetPos: "リセット",
-                exitFocus: "文字編集",
-                focusHint: "タップ: 編集 • ピンチ: 拡大縮小 • 回転: 90°",
-                themeLabel: "画面の色:",
-                modeStatic: "静止表示",
-                modeMarquee: "スクロール",
-                mirror: "鏡文字",
-                speedLabel: "速度:",
-                speedSlow: "ゆっくり",
-                speedNormal: "ふつう",
-                speedFast: "はやい",
-                editBtn: "入力",
-                inputPlaceholder: "伝えたい言葉を入力...",
-                submitBtn: "決定",
-                modalTitle: "介護コミュニケーション定型文",
-                modalSubtitle: "タップすると画面に大きく表示されます",
-                emptyFallback: "メッセージを入力してください",
-                toastCleared: "入力を消去しました",
-                toastEmpty: "メッセージを入力してください",
-                toastModeStatic: "表示モード：静止表示",
-                toastModeMarquee: "表示モード：スクロール",
-                toastMirrorOn: "鏡文字：オン",
-                toastMirrorOff: "鏡文字：オフ",
-                toastLangChanged: "表示言語：日本語",
-                toastResetPos: "サイズと位置をリセットしました",
-                toastRotatedOn: "画面を90°回転しました（横向き表示）",
-                toastRotatedOff: "画面の向きを元に戻しました"
-            }
-        };
+    const SPEEDS = [
+      { label: "0.7x", duration: "16s" },
+      { label: "1x", duration: "11s" },
+      { label: "1.5x", duration: "7s" }
+    ];
 
-        // Kategori & Template Frasa Khusus Kaigo
-        const kaigoCategories = [
-            {
-                id: "greeting",
-                icon: "ph-sun-horizon",
-                labelId: "Sapaan & Kondisi",
-                labelJa: "挨拶・体調確認",
-                phrases: [
-                    { ja: "おはようございます。よく眠れましたか？", reading: "おはようございます。よく ねむれましたか？", id: "Selamat pagi. Apakah tidur Anda nyenyak?" },
-                    { ja: "こんにちは。今日の調子はいかがですか？", reading: "こんにちは。きょうの ちょうしは いかがですか？", id: "Selamat siang. Bagaimana kondisi Anda hari ini?" },
-                    { ja: "どこか痛いところはありますか？", reading: "どこか いたい ところは ありますか？", id: "Apakah ada bagian tubuh yang sakit?" },
-                    { ja: "熱と血圧を測りましょうね。", reading: "ねつと けつあつを はかりましょうね。", id: "Mari kita ukur suhu tubuh dan tekanan darah ya." },
-                    { ja: "気分は悪くないですか？", reading: "きぶんは わるくないですか？", id: "Apakah Anda tidak merasa mual/tidak enak badan?" },
-                    { ja: "今日も一緒に頑張りましょうね。", reading: "きょうも いっしょに がんばりましょうね。", id: "Hari ini juga mari kita semangat bersama ya." }
-                ]
-            },
-            {
-                id: "meal",
-                icon: "ph-bowl-food",
-                labelId: "Makan & Minum",
-                labelJa: "食事・水分補給",
-                phrases: [
-                    { ja: "お食事の時間ですよ。", reading: "おしょくじの じかんですよ。", id: "Sudah waktunya makan ya." },
-                    { ja: "お水（お茶）を飲みましょう。", reading: "おみず（おちゃ）を のみましょう。", id: "Mari kita minum air / teh." },
-                    { ja: "ゆっくりよく噛んで食べてください。", reading: "ゆっくり よく かんで たべてください。", id: "Silakan makan perlahan dan kunyah dengan baik." },
-                    { ja: "おいしいですか？無理しないでくださいね。", reading: "おいしいですか？むり しないで くださいね。", id: "Apakah enak? Jangan dipaksakan ya." },
-                    { ja: "食後のお薬を飲みましょうね。", reading: "しょくごの おくすりを のみましょうね。", id: "Mari minum obat setelah makan ya." },
-                    { ja: "ごちそうさまでした。お口を拭きましょう。", reading: "ごちそうさまでした。おくちを ふきましょう。", id: "Terima kasih atas hidangannya. Mari kita lap mulut." }
-                ]
-            },
-            {
-                id: "hygiene",
-                icon: "ph-bathtub",
-                labelId: "Toilet, Mandi & Bersih",
-                labelJa: "排泄・入浴・清潔",
-                phrases: [
-                    { ja: "トイレに行きましょうか？", reading: "トイレに いきましょうか？", id: "Apakah Anda ingin pergi ke toilet?" },
-                    { ja: "おむつ（パッド）を交換しましょうね。", reading: "おむつ（パッド）を こうかんしましょうね。", id: "Mari kita ganti popok / pembalutnya ya." },
-                    { ja: "お風呂に入りましょう。", reading: "おふろに はいりましょう。", id: "Mari kita mandi." },
-                    { ja: "お湯加減はちょうどいいですか？", reading: "おゆかげんは ちょうど いいですか？", id: "Apakah suhu air mandinya sudah pas?" },
-                    { ja: "きれいな服に着替えをしましょう。", reading: "きれいな ふくに きがえを しましょう。", id: "Mari kita ganti dengan baju yang bersih." },
-                    { ja: "歯磨き（うがい）をしましょう。", reading: "はみがき（うがい）を しましょう。", id: "Mari kita sikat gigi / berkumur." }
-                ]
-            },
-            {
-                id: "mobility",
-                icon: "ph-wheelchair",
-                labelId: "Perpindahan & Aman",
-                labelJa: "移動・安全",
-                phrases: [
-                    { ja: "ゆっくり立ち上がりましょう。", reading: "ゆっくり たちあがりましょう。", id: "Mari berdiri perlahan-lahan." },
-                    { ja: "車椅子に座りましょう。", reading: "くるまいすに すわりましょう。", id: "Mari duduk di kursi roda." },
-                    { ja: "足元に気をつけてくださいね。", reading: "あしもとに きをつけて くださいね。", id: "Hati-hati dengan langkah kaki Anda ya." },
-                    { ja: "危ないので、手すりにつかまってください。", reading: "あぶないので、てすりに つかまってください。", id: "Berbahaya, silakan pegangan pada pegangan tangan." },
-                    { ja: "少し休みましょうか？横になりますか？", reading: "すこし やすみましょうか？よこに なりますか？", id: "Mau istirahat sebentar? Apakah ingin berbaring?" },
-                    { ja: "おやすみなさい。ゆっくり休んでください。", reading: "おやすみなさい。ゆっくり やすんでください。", id: "Selamat tidur. Silakan beristirahat dengan tenang." }
-                ]
-            },
-            {
-                id: "reassurance",
-                icon: "ph-heart",
-                labelId: "Respon & Penenang",
-                labelJa: "声かけ・安心",
-                phrases: [
-                    { ja: "大丈夫ですよ、安心してください。", reading: "だいじょうぶですよ、あんしん してください。", id: "Tidak apa-apa kok, tenang saja ya." },
-                    { ja: "少しお待ちくださいね。", reading: "すこし おまちくださいね。", id: "Mohon tunggu sebentar ya." },
-                    { ja: "私が手伝いますよ。", reading: "わたしが てつだいますよ。", id: "Saya akan membantu Anda." },
-                    { ja: "ありがとうございます。助かりました。", reading: "ありがとうございます。たすかりました。", id: "Terima kasih banyak. Sangat terbantu." },
-                    { ja: "すごいですね！上手にできましたね。", reading: "すごいですね！じょうずに できましたね。", id: "Hebat sekali! Anda melakukannya dengan baik." },
-                    { ja: "何かあったら、いつでも呼んでくださいね。", reading: "なにか あったら、いつでも よんでくださいね。", id: "Kalau ada apa-apa, panggil saya kapan saja ya." }
-                ]
-            }
-        ];
+    // ==============================
+    // STATE APLIKASI
+    // ==============================
+    const state = {
+      lang: "id", // 'id' atau 'jp'
+      theme: "yellow",
+      isMarquee: false,
+      speedIndex: 1,
+      isMirrored: false,
+      isFullscreen: false,
+      isRotated: false,
+      scale: 1,
+      panX: 0,
+      panY: 0,
+      activeCategory: "greeting"
+    };
 
-        // Konfigurasi Tema Kontras Tinggi
-        const themes = {
-            "yellow-black": { bg: "bg-black", text: "text-yellow-400", dot: "bg-yellow-400" },
-            "white-black":  { bg: "bg-black", text: "text-white", dot: "bg-white" },
-            "white-navy":   { bg: "bg-blue-950", text: "text-white", dot: "bg-blue-400" },
-            "black-white":  { bg: "bg-white", text: "text-black", dot: "bg-zinc-900" }
-        };
+    // ==============================
+    // ELEMEN DOM
+    // ==============================
+    const appRoot = document.getElementById("app-root");
+    const topBar = document.getElementById("top-bar");
+    const bottomBar = document.getElementById("bottom-bar");
+    const stage = document.getElementById("stage");
+    const transformLayer = document.getElementById("transform-layer");
+    const rotationBox = document.getElementById("rotation-box");
+    const mirrorWrapper = document.getElementById("mirror-wrapper");
+    const textOutput = document.getElementById("text-output");
+    const textInput = document.getElementById("text-input");
 
-        // Kecepatan dasar dalam piksel per detik
-        const speedPxPerSec = {
-            slow: 125,
-            normal: 230,
-            fast: 380
-        };
+    const btnLang = document.getElementById("btn-lang");
+    const btnMotion = document.getElementById("btn-motion");
+    const btnSpeed = document.getElementById("btn-speed");
+    const btnMirror = document.getElementById("btn-mirror");
+    const btnFullscreen = document.getElementById("btn-fullscreen");
+    const btnRotate = document.getElementById("btn-rotate");
+    const btnResetView = document.getElementById("btn-reset-view");
+    const btnOpenTemplate = document.getElementById("btn-open-template");
+    const btnEditFocus = document.getElementById("btn-edit-focus");
+    const btnClear = document.getElementById("btn-clear");
+    const btnOk = document.getElementById("btn-ok");
 
-        // ==================== ELEMEN DOM ====================
-        const appBody = document.getElementById("app-body");
-        const displayStage = document.getElementById("display-stage");
-        const panZoomLayer = document.getElementById("pan-zoom-layer");
-        const rotationBox = document.getElementById("rotation-box");
-        const marqueeContainer = document.getElementById("marquee-container");
-        const marqueeText = document.getElementById("marquee-text");
-        const staticContainer = document.getElementById("static-container");
-        const staticText = document.getElementById("static-text");
-        const mirrorWrapper = document.getElementById("mirror-wrapper");
-        const messageInput = document.getElementById("message-input");
-        const topControls = document.getElementById("top-controls");
-        const bottomControls = document.getElementById("bottom-controls");
-        const focusHint = document.getElementById("focus-hint");
-        const floatingExitBtn = document.getElementById("floating-exit-btn");
-        const resetTransformBtn = document.getElementById("reset-transform-btn");
-        const btnRotateScreen = document.getElementById("btn-rotate-screen");
-        const iconRotate = document.getElementById("icon-rotate");
-        const zoomBadge = document.getElementById("zoom-badge");
-        const zoomBadgeText = document.getElementById("zoom-badge-text");
-        const templateModal = document.getElementById("template-modal");
-        const modalCategoryTabs = document.getElementById("modal-category-tabs");
-        const modalPhrasesList = document.getElementById("modal-phrases-list");
-        const quickSettingsPopover = document.getElementById("quick-settings-popover");
+    const zoomBadge = document.getElementById("zoom-badge");
+    const fullscreenHint = document.getElementById("fullscreen-hint");
+    const templateModal = document.getElementById("template-modal");
+    const btnCloseTemplate = document.getElementById("btn-close-template");
+    const categoryTabs = document.getElementById("category-tabs");
+    const phraseList = document.getElementById("phrase-list");
 
-        // ==================== INISIALISASI ====================
-        function init() {
-            applyUILanguage();
-            renderModalCategoryTabs();
-            renderModalPhrases();
-            messageInput.value = "";
-            setSpeed("slow");
-            updateRotationBoxDimensions();
-            setupGestures();
-            setupViewportListener();
-            updateDisplay();
+    // ==============================
+    // RENDER TEKS & LAYOUT
+    // ==============================
+    function escapeHTML(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
 
-            // Tutup popover pengaturan cepat saat klik di luar
-            document.addEventListener("pointerdown", (e) => {
-                if (
-                    state.isQuickSettingsOpen &&
-                    !quickSettingsPopover.contains(e.target) &&
-                    !document.getElementById("btn-theme-toggle").contains(e.target)
-                ) {
-                    closeQuickSettings();
-                }
-            });
+    function renderText() {
+      const raw = textInput.value.trim();
+      const displayStr = raw || (state.lang === "id" ? "Ketik pesan Anda..." : "メッセージを入力してください...");
 
-            // Tutup modal dengan tombol Escape
-            window.addEventListener("keydown", (e) => {
-                if (e.key === "Escape") {
-                    if (state.isTemplateOpen) closeTemplateModal();
-                    if (state.isQuickSettingsOpen) closeQuickSettings();
-                }
-            });
-        }
+      if (state.isMarquee) {
+        const safe = escapeHTML(displayStr);
+        textOutput.className = "display-font marquee-track";
+        textOutput.innerHTML = `
+          <span class="marquee-item">${safe}</span>
+          <span class="marquee-item">${safe}</span>
+        `;
+      } else {
+        textOutput.className = "display-font static-text";
+        textOutput.textContent = displayStr;
+      }
+      updateRotationDimensions();
+    }
 
-        // ==================== PENYESUAIAN VIEWPORT DINAMIS & KEYBOARD VIRTUAL ====================
-        function setupViewportListener() {
-            const handleViewportResize = () => {
-                // Pastikan tinggi body selalu mengikuti visualViewport saat keyboard HP muncul
-                if (window.visualViewport) {
-                    appBody.style.height = `${window.visualViewport.height}px`;
-                    window.scrollTo(0, 0);
-                }
-                updateRotationBoxDimensions();
-                if (state.mode === "marquee") {
-                    recalculateMarqueeSpeed();
-                }
-            };
+    function updateRotationDimensions() {
+      const rect = stage.getBoundingClientRect();
+      if (state.isRotated) {
+        rotationBox.style.width = `${rect.height}px`;
+        rotationBox.style.height = `${rect.width}px`;
+        rotationBox.style.transform = "rotate(90deg)";
+      } else {
+        rotationBox.style.width = `${rect.width}px`;
+        rotationBox.style.height = `${rect.height}px`;
+        rotationBox.style.transform = "rotate(0deg)";
+      }
+    }
 
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener("resize", handleViewportResize);
-                window.visualViewport.addEventListener("scroll", () => window.scrollTo(0, 0));
-            }
-            window.addEventListener("resize", handleViewportResize);
-        }
+    let zoomBadgeTimer = null;
+    function applyTransform(showZoomIndicator = false) {
+      transformLayer.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
 
-        // ==================== FOKUS KEYBOARD INSTAN ====================
-        function focusKeyboardInput() {
-            closeQuickSettings();
-            if (state.isFocusMode) {
-                exitFocusMode();
-            }
-            // Fokuskan input segera dalam event klik pengguna agar keyboard HP langsung terbuka
-            messageInput.focus();
-            // Pindahkan kursor ke akhir teks jika ada isi
-            const len = messageInput.value.length;
-            messageInput.setSelectionRange(len, len);
-        }
+      const isModified = Math.abs(state.scale - 1) > 0.03 || Math.abs(state.panX) > 4 || Math.abs(state.panY) > 4;
+      btnResetView.classList.toggle("hidden", !isModified);
 
-        // ==================== KONTROL ROTASI LAYAR 90° (PUTAR / 画面回転) ====================
-        function updateRotationBoxDimensions() {
-            const stageW = displayStage.clientWidth || window.innerWidth;
-            const stageH = displayStage.clientHeight || window.innerHeight;
+      if (showZoomIndicator) {
+        zoomBadge.textContent = `${Math.round(state.scale * 100)}%`;
+        zoomBadge.style.opacity = "1";
+        clearTimeout(zoomBadgeTimer);
+        zoomBadgeTimer = setTimeout(() => {
+          zoomBadge.style.opacity = "0";
+        }, 1100);
+      }
+    }
 
-            if (state.isRotated90) {
-                // Tukar dimensi width dan height wadah teks saat diputar 90° agar teks panjang muat menyamping
-                rotationBox.style.width = `${stageH}px`;
-                rotationBox.style.height = `${stageW}px`;
-                rotationBox.style.transform = "rotate(90deg)";
-                staticText.style.fontSize = `clamp(2.4rem, ${(stageH * 0.085).toFixed(1)}px, 6.2rem)`;
-                marqueeText.style.fontSize = `clamp(3rem, ${(stageW * 0.42).toFixed(1)}px, 8.5rem)`;
-            } else {
-                rotationBox.style.width = `${stageW}px`;
-                rotationBox.style.height = `${stageH}px`;
-                rotationBox.style.transform = "rotate(0deg)";
-                staticText.style.fontSize = "clamp(2.4rem, 8.2vw, 6rem)";
-                marqueeText.style.fontSize = "clamp(3.5rem, 16vh, 9rem)";
-            }
-        }
+    function resetView() {
+      state.scale = 1;
+      state.panX = 0;
+      state.panY = 0;
+      applyTransform(true);
+    }
 
-        async function toggleScreenRotation(e) {
-            if (e) e.stopPropagation();
-            const t = i18n[state.uiLang];
-            state.isRotated90 = !state.isRotated90;
+    function applyTheme(themeKey) {
+      state.theme = themeKey;
+      const t = THEMES[themeKey] || THEMES.yellow;
+      document.documentElement.style.setProperty("--bg-color", t.bg);
+      document.documentElement.style.setProperty("--text-color", t.text);
+      appRoot.style.backgroundColor = t.bg;
+      appRoot.style.color = t.text;
 
-            // 1. Coba kunci orientasi hardware melalui Screen Orientation API jika didukung saat fullscreen
-            try {
-                if (screen.orientation && screen.orientation.lock) {
-                    if (state.isRotated90 && document.fullscreenElement) {
-                        await screen.orientation.lock("landscape").catch(() => {});
-                    } else if (!state.isRotated90 && screen.orientation.unlock) {
-                        screen.orientation.unlock();
-                    }
-                }
-            } catch (err) {}
+      document.querySelectorAll(".theme-btn").forEach((btn) => {
+        const active = btn.dataset.theme === themeKey;
+        btn.style.outline = active ? "2px solid #38BDF8" : "none";
+        btn.style.outlineOffset = "2px";
+      });
+    }
 
-            // 2. Terapkan rotasi kanvas 90° yang pasti berhasil di semua perangkat (iOS/Android)
-            updateRotationBoxDimensions();
-            updateRotateButtonUI();
+    function updateUIControls() {
+      const isID = state.lang === "id";
+      btnLang.textContent = isID ? "ID / 日本語" : "日本語 / ID";
+      btnMotion.textContent = state.isMarquee
+        ? (isID ? "Jalan" : "流れる")
+        : (isID ? "Diam" : "固定");
+      btnSpeed.classList.toggle("hidden", !state.isMarquee);
+      btnSpeed.textContent = SPEEDS[state.speedIndex].label;
+      btnFullscreen.textContent = state.isFullscreen
+        ? (isID ? "Keluar" : "戻る")
+        : (isID ? "Penuh" : "全画面");
 
-            if (state.mode === "marquee") {
-                recalculateMarqueeSpeed();
-            }
+      document.getElementById("lbl-rotate").textContent = isID ? "Putar" : "回転";
+      document.getElementById("lbl-template").textContent = isID ? "Template" : "定型文";
+      document.getElementById("lbl-edit").textContent = isID ? "Edit" : "入力";
+      document.getElementById("btn-ok").textContent = isID ? "OK" : "決定";
+      textInput.placeholder = isID ? "Ketik pesan di sini..." : "ここに文字を入力...";
+      fullscreenHint.textContent = isID
+        ? "Ketuk layar untuk menampilkan menu"
+        : "画面をタップするとメニューが表示されます";
+      document.getElementById("modal-title").textContent = isID
+        ? "Template Komunikasi Kaigo (介護定型文)"
+        : "介護コミュニケーション定型文";
 
-            showToast(state.isRotated90 ? t.toastRotatedOn : t.toastRotatedOff);
-        }
+      mirrorWrapper.classList.toggle("mirrored", state.isMirrored);
+      btnMirror.classList.toggle("bg-amber-400", state.isMirrored);
+      btnMirror.classList.toggle("text-black", state.isMirrored);
 
-        function updateRotateButtonUI() {
-            const t = i18n[state.uiLang];
-            const labelRotate = document.getElementById("label-rotate");
-            const isZoomed = Math.abs(state.scale - 1) > 0.04;
+      btnRotate.classList.toggle("bg-amber-400", state.isRotated);
+      btnRotate.classList.toggle("text-black", state.isRotated);
+    }
 
-            if (state.isRotated90) {
-                labelRotate.textContent = t.rotateBtnActive;
-                btnRotateScreen.classList.add("bg-yellow-400", "text-black", "border-yellow-400");
-                btnRotateScreen.classList.remove("bg-zinc-900/75", "text-white", "border-zinc-700/80");
-                iconRotate.classList.remove("text-yellow-400");
-                iconRotate.classList.add("text-black", "rotate-90");
-            } else {
-                labelRotate.textContent = t.rotateBtn;
-                btnRotateScreen.classList.remove("bg-yellow-400", "text-black", "border-yellow-400");
-                btnRotateScreen.classList.add("bg-zinc-900/75", "text-white");
-                iconRotate.classList.add("text-yellow-400");
-                iconRotate.classList.remove("text-black", "rotate-90");
+    function setFullscreen(enabled) {
+      state.isFullscreen = enabled;
+      topBar.classList.toggle("hud-hidden", enabled);
+      bottomBar.classList.toggle("hud-bottom-hidden", enabled);
 
-                // Menonjolkan border tombol putar saat user melakukan zoom
-                if (isZoomed) {
-                    btnRotateScreen.classList.add("border-yellow-400", "ring-2", "ring-yellow-400/40", "opacity-100");
-                    btnRotateScreen.classList.remove("border-zinc-700/80");
-                } else {
-                    btnRotateScreen.classList.remove("border-yellow-400", "ring-2", "ring-yellow-400/40");
-                    btnRotateScreen.classList.add("border-zinc-700/80");
-                }
-            }
-        }
+      if (enabled) {
+        textInput.blur();
+        fullscreenHint.style.opacity = "1";
+        setTimeout(() => {
+          fullscreenHint.style.opacity = "0";
+        }, 1800);
+      } else {
+        fullscreenHint.style.opacity = "0";
+      }
 
-        // ==================== POPOVER PENGATURAN CEPAT & MODAL TEMPLATE ====================
-        function toggleQuickSettings() {
-            state.isQuickSettingsOpen = !state.isQuickSettingsOpen;
-            if (state.isQuickSettingsOpen) {
-                quickSettingsPopover.classList.remove("hidden");
-            } else {
-                quickSettingsPopover.classList.add("hidden");
-            }
-        }
+      updateUIControls();
+      requestAnimationFrame(updateRotationDimensions);
+    }
 
-        function closeQuickSettings() {
-            state.isQuickSettingsOpen = false;
-            quickSettingsPopover.classList.add("hidden");
-        }
+    // ==============================
+    // RENDER MODAL TEMPLATE KAIGO
+    // ==============================
+    function renderTemplateModal() {
+      const isID = state.lang === "id";
 
-        function openTemplateModal() {
-            closeQuickSettings();
-            state.isTemplateOpen = true;
-            renderModalCategoryTabs();
-            renderModalPhrases();
-            templateModal.classList.remove("hidden");
-        }
+      // Render Tab Kategori
+      categoryTabs.innerHTML = KAIGO_TEMPLATES.map((cat) => {
+        const active = cat.id === state.activeCategory;
+        return `
+          <button
+            type="button"
+            data-cat="${cat.id}"
+            class="cat-tab shrink-0 px-3 py-1.5 rounded-full text-xs font-extrabold transition ${
+              active
+                ? "bg-amber-400 text-black"
+                : "bg-white/10 text-white/80 hover:bg-white/20"
+            }"
+          >
+            ${isID ? cat.labelID : cat.labelJP}
+          </button>
+        `;
+      }).join("");
 
-        function closeTemplateModal() {
-            state.isTemplateOpen = false;
+      categoryTabs.querySelectorAll(".cat-tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.activeCategory = btn.dataset.cat;
+          renderTemplateModal();
+        });
+      });
+
+      // Render Daftar Kalimat
+      const currentCat = KAIGO_TEMPLATES.find((c) => c.id === state.activeCategory) || KAIGO_TEMPLATES[0];
+      phraseList.innerHTML = currentCat.phrases.map((item, idx) => `
+        <button
+          type="button"
+          data-idx="${idx}"
+          class="phrase-item w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/15 active:bg-amber-400/20 border border-white/10 transition flex flex-col gap-1"
+        >
+          <span class="text-base font-extrabold text-amber-300 leading-snug">${escapeHTML(item.jp)}</span>
+          <span class="text-xs text-white/75 font-medium">${escapeHTML(isID ? item.id : item.reading)}</span>
+        </button>
+      `).join("");
+
+      phraseList.querySelectorAll(".phrase-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const chosen = currentCat.phrases[Number(btn.dataset.idx)];
+          if (chosen) {
+            textInput.value = chosen.jp;
+            renderText();
+            resetView();
             templateModal.classList.add("hidden");
+          }
+        });
+      });
+    }
+
+    // ==============================
+    // INTERAKSI GESTUR STAGE:
+    // - 1 Ketukan (Tap) => Toggle Layar Penuh (TANPA memunculkan keyboard!)
+    // - 2 Ketukan (Double Tap) => Reset Zoom & Posisi
+    // - 1 Jari Geser => Pan (Geser posisi teks)
+    // - 2 Jari Cubit => Pinch-to-Zoom
+    // ==============================
+    let pointers = new Map();
+    let isDragging = false;
+    let hasMoved = false;
+    let startPanX = 0;
+    let startPanY = 0;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialPinchDist = 0;
+    let initialScale = 1;
+    let lastTapTime = 0;
+    let singleTapTimer = null;
+
+    function getDistance(p1, p2) {
+      return Math.hypot(p2.clientX - p1.clientX, p2.clientY - p1.clientY);
+    }
+
+    stage.addEventListener("pointerdown", (e) => {
+      // Abaikan jika menyentuh tombol melayang (Putar / Reset)
+      if (e.target.closest("#floating-tools")) return;
+
+      stage.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, e);
+
+      if (pointers.size === 1) {
+        isDragging = true;
+        hasMoved = false;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        startPanX = state.panX;
+        startPanY = state.panY;
+      } else if (pointers.size === 2) {
+        isDragging = false;
+        hasMoved = true;
+        const pts = Array.from(pointers.values());
+        initialPinchDist = getDistance(pts[0], pts[1]);
+        initialScale = state.scale;
+      }
+    });
+
+    stage.addEventListener("pointermove", (e) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, e);
+
+      if (pointers.size === 1 && isDragging) {
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        if (Math.hypot(dx, dy) > 6) {
+          hasMoved = true;
         }
-
-        // ==================== PENGALIH BAHASA ANTARMUKA (ID <-> 日本語) ====================
-        function toggleUILanguage() {
-            state.uiLang = state.uiLang === "id" ? "ja" : "id";
-            applyUILanguage();
-            if (state.isTemplateOpen) {
-                renderModalCategoryTabs();
-                renderModalPhrases();
-            }
-            showToast(i18n[state.uiLang].toastLangChanged);
+        if (hasMoved) {
+          state.panX = startPanX + dx;
+          state.panY = startPanY + dy;
+          applyTransform(false);
         }
-
-        function applyUILanguage() {
-            const t = i18n[state.uiLang];
-            document.getElementById("ui-app-title").textContent = t.appTitle;
-            document.getElementById("ui-app-subtitle").textContent = t.appSubtitle;
-            document.getElementById("label-lang").textContent = t.langBtn;
-            document.getElementById("label-theme-btn").textContent = t.themeBtn;
-            document.getElementById("label-template-btn").textContent = t.templateBtn;
-            document.getElementById("label-fullscreen").textContent = t.fullscreen;
-            document.getElementById("label-reset-pos").textContent = t.resetPos;
-            document.getElementById("label-exit-focus").textContent = t.exitFocus;
-            document.getElementById("label-focus-hint").textContent = t.focusHint;
-            document.getElementById("label-theme").textContent = t.themeLabel;
-            document.getElementById("label-mode").textContent = state.mode === "static" ? t.modeStatic : t.modeMarquee;
-            document.getElementById("label-mirror").textContent = t.mirror;
-            document.getElementById("label-speed").textContent = t.speedLabel;
-            document.getElementById("btn-speed-slow").textContent = t.speedSlow;
-            document.getElementById("btn-speed-normal").textContent = t.speedNormal;
-            document.getElementById("btn-speed-fast").textContent = t.speedFast;
-            document.getElementById("label-edit-btn").textContent = t.editBtn;
-            messageInput.placeholder = t.inputPlaceholder;
-            document.getElementById("label-submit").textContent = t.submitBtn;
-            document.getElementById("modal-template-title").textContent = t.modalTitle;
-            document.getElementById("modal-template-subtitle").textContent = t.modalSubtitle;
-            updateRotateButtonUI();
+      } else if (pointers.size === 2) {
+        const pts = Array.from(pointers.values());
+        const dist = getDistance(pts[0], pts[1]);
+        if (initialPinchDist > 0) {
+          const nextScale = Math.min(3.5, Math.max(0.4, initialScale * (dist / initialPinchDist)));
+          state.scale = nextScale;
+          applyTransform(true);
         }
+      }
+    });
 
-        // ==================== RENDER KATEGORI & TEMPLATE KAIGO DI DALAM MODAL ====================
-        function renderModalCategoryTabs() {
-            modalCategoryTabs.innerHTML = "";
-            kaigoCategories.forEach(cat => {
-                const isActive = cat.id === state.activeCategory;
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = `shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                    isActive
-                        ? "bg-yellow-400 text-black border-yellow-400 shadow-sm"
-                        : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
-                }`;
-                
-                const labelText = state.uiLang === "ja" ? cat.labelJa : `${cat.labelId} (${cat.labelJa})`;
-                btn.innerHTML = `<i class="ph-bold ${cat.icon} text-sm"></i><span>${labelText}</span>`;
-                
-                btn.onclick = () => {
-                    state.activeCategory = cat.id;
-                    renderModalCategoryTabs();
-                    renderModalPhrases();
-                };
-                modalCategoryTabs.appendChild(btn);
-            });
+    function handlePointerUp(e) {
+      if (e.target.closest("#floating-tools")) return;
+      const wasSingleTap = pointers.size === 1 && !hasMoved;
+      pointers.delete(e.pointerId);
+
+      if (pointers.size < 2) {
+        initialPinchDist = 0;
+      }
+      if (pointers.size === 0) {
+        isDragging = false;
+      }
+
+      if (wasSingleTap) {
+        const now = Date.now();
+        if (now - lastTapTime < 260) {
+          // Double tap -> Reset zoom & posisi
+          clearTimeout(singleTapTimer);
+          lastTapTime = 0;
+          resetView();
+        } else {
+          lastTapTime = now;
+          singleTapTimer = setTimeout(() => {
+            // Single tap -> Hanya keluar/masuk layar penuh, JANGAN panggil textInput.focus()
+            setFullscreen(!state.isFullscreen);
+          }, 265);
         }
+      }
+    }
 
-        function renderModalPhrases() {
-            modalPhrasesList.innerHTML = "";
-            const activeCatObj = kaigoCategories.find(c => c.id === state.activeCategory) || kaigoCategories[0];
-            
-            activeCatObj.phrases.forEach(item => {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "w-full text-left px-3.5 py-2.5 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 active:bg-yellow-400 active:text-black text-white border border-zinc-700/90 transition cursor-pointer flex items-center justify-between gap-2.5 group";
-                
-                if (state.uiLang === "id") {
-                    btn.innerHTML = `
-                        <div class="flex flex-col gap-0.5 min-w-0">
-                            <span class="text-sm sm:text-base font-black leading-snug text-yellow-300 group-active:text-black">${item.ja}</span>
-                            <span class="text-xs font-medium leading-tight text-zinc-300 group-active:text-zinc-900">${item.id}</span>
-                        </div>
-                        <i class="ph-bold ph-arrow-up-right text-base text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
-                    `;
-                } else {
-                    btn.innerHTML = `
-                        <div class="flex flex-col gap-0.5 min-w-0">
-                            <span class="text-[11px] font-bold leading-tight text-zinc-400 group-active:text-zinc-800">${item.reading}</span>
-                            <span class="text-sm sm:text-base font-black leading-snug text-white group-active:text-black">${item.ja}</span>
-                        </div>
-                        <i class="ph-bold ph-arrow-up-right text-base text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
-                    `;
-                }
+    stage.addEventListener("pointerup", handlePointerUp);
+    stage.addEventListener("pointercancel", (e) => {
+      pointers.delete(e.pointerId);
+      isDragging = false;
+    });
 
-                btn.onclick = () => {
-                    state.text = item.ja;
-                    messageInput.value = item.ja;
-                    resetPanZoom();
-                    updateDisplay();
-                    closeTemplateModal();
-                };
-                modalPhrasesList.appendChild(btn);
-            });
-        }
+    // Zoom menggunakan scroll wheel mouse/trackpad di desktop
+    stage.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1.1 : 0.9;
+      state.scale = Math.min(3.5, Math.max(0.4, state.scale * delta));
+      applyTransform(true);
+    }, { passive: false });
 
-        // ==================== GESTURE ZOOM (CUBIT / SCROLL) & GESER (PAN) ====================
-        let zoomBadgeTimeout;
-        function applyPanZoomTransform(showIndicator = false) {
-            panZoomLayer.style.transform = `translate3d(${state.panX}px, ${state.panY}px, 0) scale(${state.scale})`;
+    // ==============================
+    // EVENT LISTENER TOMBOL KONTROL
+    // ==============================
+    btnLang.addEventListener("click", () => {
+      state.lang = state.lang === "id" ? "jp" : "id";
+      updateUIControls();
+      renderText();
+    });
 
-            const isModified = Math.abs(state.scale - 1) > 0.03 || Math.abs(state.panX) > 5 || Math.abs(state.panY) > 5;
-            if (isModified) {
-                resetTransformBtn.classList.remove("hidden");
-            } else {
-                resetTransformBtn.classList.add("hidden");
-            }
+    document.querySelectorAll(".theme-btn").forEach((btn) => {
+      btn.addEventListener("click", () => applyTheme(btn.dataset.theme));
+    });
 
-            updateRotateButtonUI();
+    btnMotion.addEventListener("click", () => {
+      state.isMarquee = !state.isMarquee;
+      updateUIControls();
+      renderText();
+    });
 
-            if (showIndicator) {
-                zoomBadgeText.textContent = `${Math.round(state.scale * 100)}%`;
-                zoomBadge.classList.remove("hidden");
-                clearTimeout(zoomBadgeTimeout);
-                zoomBadgeTimeout = setTimeout(() => {
-                    zoomBadge.classList.add("hidden");
-                }, 1100);
-            }
-        }
+    btnSpeed.addEventListener("click", () => {
+      state.speedIndex = (state.speedIndex + 1) % SPEEDS.length;
+      document.documentElement.style.setProperty("--marquee-duration", SPEEDS[state.speedIndex].duration);
+      updateUIControls();
+    });
 
-        function resetPanZoom(e) {
-            if (e) e.stopPropagation();
-            state.scale = 1;
-            state.panX = 0;
-            state.panY = 0;
-            panZoomLayer.style.transition = "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
-            applyPanZoomTransform(false);
-            setTimeout(() => {
-                panZoomLayer.style.transition = "";
-            }, 260);
-            if (e) {
-                showToast(i18n[state.uiLang].toastResetPos);
-            }
-        }
+    btnMirror.addEventListener("click", () => {
+      state.isMirrored = !state.isMirrored;
+      updateUIControls();
+    });
 
-        function setupGestures() {
-            let isDragging = false;
-            let hasMoved = false;
-            let startX = 0;
-            let startY = 0;
-            let initialPanX = 0;
-            let initialPanY = 0;
+    btnFullscreen.addEventListener("click", () => {
+      setFullscreen(!state.isFullscreen);
+    });
 
-            let isPinching = false;
-            let initialPinchDist = 0;
-            let initialScale = 1;
-            let lastTapTime = 0;
+    btnRotate.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.isRotated = !state.isRotated;
+      updateUIControls();
+      updateRotationDimensions();
+    });
 
-            const getTouchDistance = (t1, t2) => {
-                return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-            };
+    btnResetView.addEventListener("click", (e) => {
+      e.stopPropagation();
+      resetView();
+    });
 
-            const clampScale = (s) => Math.min(Math.max(s, 0.4), 3.5);
+    // Tombol Edit: Memunculkan keyboard secara eksplisit
+    btnEditFocus.addEventListener("click", () => {
+      if (state.isFullscreen) {
+        setFullscreen(false);
+      }
+      textInput.focus();
+      const len = textInput.value.length;
+      textInput.setSelectionRange(len, len);
+    });
 
-            // --- TOUCH EVENTS (HP & TABLET) ---
-            displayStage.addEventListener("touchstart", (e) => {
-                if (e.target.closest("button")) return;
+    textInput.addEventListener("input", () => {
+      renderText();
+    });
 
-                if (e.touches.length === 2) {
-                    isPinching = true;
-                    isDragging = false;
-                    hasMoved = true;
-                    initialPinchDist = getTouchDistance(e.touches[0], e.touches[1]);
-                    initialScale = state.scale;
-                } else if (e.touches.length === 1) {
-                    isPinching = false;
-                    isDragging = true;
-                    hasMoved = false;
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                    initialPanX = state.panX;
-                    initialPanY = state.panY;
-                }
-            }, { passive: false });
+    textInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        textInput.blur();
+      }
+    });
 
-            displayStage.addEventListener("touchmove", (e) => {
-                if (isPinching && e.touches.length === 2) {
-                    e.preventDefault();
-                    const currentDist = getTouchDistance(e.touches[0], e.touches[1]);
-                    if (initialPinchDist > 0) {
-                        const ratio = currentDist / initialPinchDist;
-                        state.scale = clampScale(initialScale * ratio);
-                        applyPanZoomTransform(true);
-                    }
-                } else if (isDragging && e.touches.length === 1) {
-                    const dx = e.touches[0].clientX - startX;
-                    const dy = e.touches[0].clientY - startY;
-                    if (Math.hypot(dx, dy) > 8) {
-                        hasMoved = true;
-                        e.preventDefault();
-                        state.panX = initialPanX + dx;
-                        state.panY = initialPanY + dy;
-                        applyPanZoomTransform(false);
-                    }
-                }
-            }, { passive: false });
+    btnClear.addEventListener("click", () => {
+      textInput.value = "";
+      renderText();
+      textInput.focus();
+    });
 
-            displayStage.addEventListener("touchend", (e) => {
-                if (e.touches.length < 2) {
-                    isPinching = false;
-                }
-                if (e.touches.length === 0) {
-                    if (isDragging && !hasMoved && !e.target.closest("button")) {
-                        const now = Date.now();
-                        if (now - lastTapTime < 280) {
-                            resetPanZoom();
-                            showToast(i18n[state.uiLang].toastResetPos);
-                            lastTapTime = 0;
-                        } else {
-                            lastTapTime = now;
-                            handleStageClick();
-                        }
-                    }
-                    isDragging = false;
-                }
-            });
+    btnOk.addEventListener("click", () => {
+      textInput.blur();
+      renderText();
+    });
 
-            // --- MOUSE EVENTS (DESKTOP / LAPTOP) ---
-            displayStage.addEventListener("mousedown", (e) => {
-                if (e.button !== 0 || e.target.closest("button")) return;
-                isDragging = true;
-                hasMoved = false;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialPanX = state.panX;
-                initialPanY = state.panY;
-            });
+    // Modal Template
+    btnOpenTemplate.addEventListener("click", () => {
+      textInput.blur();
+      renderTemplateModal();
+      templateModal.classList.remove("hidden");
+    });
 
-            window.addEventListener("mousemove", (e) => {
-                if (!isDragging) return;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
-                if (Math.hypot(dx, dy) > 6) {
-                    hasMoved = true;
-                    state.panX = initialPanX + dx;
-                    state.panY = initialPanY + dy;
-                    applyPanZoomTransform(false);
-                }
-            });
+    btnCloseTemplate.addEventListener("click", () => {
+      templateModal.classList.add("hidden");
+    });
 
-            window.addEventListener("mouseup", (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                if (!hasMoved && displayStage.contains(e.target) && !e.target.closest("button")) {
-                    handleStageClick();
-                }
-            });
+    templateModal.addEventListener("click", (e) => {
+      if (e.target === templateModal) {
+        templateModal.classList.add("hidden");
+      }
+    });
 
-            displayStage.addEventListener("dblclick", (e) => {
-                if (e.target.closest("button")) return;
-                resetPanZoom();
-                showToast(i18n[state.uiLang].toastResetPos);
-            });
+    // Penyesuaian otomatis saat orientasi layar atau tinggi keyboard berubah
+    window.addEventListener("resize", updateRotationDimensions);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        appRoot.style.height = `${window.visualViewport.height}px`;
+        updateRotationDimensions();
+      });
+    }
 
-            // --- WHEEL ZOOM (SCROLL MOUSE / TRACKPAD PINCH) ---
-            displayStage.addEventListener("wheel", (e) => {
-                e.preventDefault();
-                const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
-                state.scale = clampScale(state.scale * zoomFactor);
-                applyPanZoomTransform(true);
-            }, { passive: false });
-        }
-
-        // ==================== LOGIKA TAMPILAN & ANIMASI ====================
-        function updateDisplay() {
-            const t = i18n[state.uiLang];
-            const displayText = state.text.trim() || t.emptyFallback;
-            
-            marqueeText.textContent = displayText;
-            staticText.textContent = displayText;
-
-            Object.values(themes).forEach(th => {
-                appBody.classList.remove(th.bg, th.text);
-            });
-            const activeTheme = themes[state.theme];
-            appBody.classList.add(activeTheme.bg, activeTheme.text);
-
-            const dotPreview = document.getElementById("theme-dot-preview");
-            if (dotPreview) {
-                dotPreview.className = `w-3.5 h-3.5 rounded-full ${activeTheme.dot} border border-white/60 shrink-0`;
-            }
-
-            if (state.mode === "marquee") {
-                marqueeContainer.classList.remove("hidden");
-                staticContainer.classList.add("hidden");
-                document.getElementById("speed-control-group").classList.remove("opacity-40", "pointer-events-none");
-                recalculateMarqueeSpeed();
-            } else {
-                marqueeContainer.classList.add("hidden");
-                staticContainer.classList.remove("hidden");
-                document.getElementById("speed-control-group").classList.add("opacity-40", "pointer-events-none");
-            }
-
-            if (state.isMirrored) {
-                mirrorWrapper.classList.add("mirror-flip");
-            } else {
-                mirrorWrapper.classList.remove("mirror-flip");
-            }
-        }
-
-        function recalculateMarqueeSpeed() {
-            marqueeText.style.animationName = "none";
-            
-            requestAnimationFrame(() => {
-                const textWidth = marqueeText.offsetWidth;
-                const containerWidth = rotationBox.clientWidth || window.innerWidth;
-                const totalDistance = textWidth + containerWidth;
-                const pxPerSec = speedPxPerSec[state.speed];
-                
-                const durationSec = Math.max(3.5, totalDistance / pxPerSec);
-                
-                marqueeText.style.animationDuration = `${durationSec.toFixed(2)}s`;
-                marqueeText.style.animationName = "marquee-scroll";
-            });
-        }
-
-        // ==================== KONTROL INTERAKSI PENGGUNA ====================
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const t = i18n[state.uiLang];
-            const val = messageInput.value.trim();
-            if (val) {
-                state.text = val;
-                resetPanZoom();
-                updateDisplay();
-                messageInput.blur();
-                enterFocusMode();
-            } else {
-                messageInput.focus();
-                showToast(t.toastEmpty);
-            }
-        }
-
-        function clearInput() {
-            messageInput.value = "";
-            messageInput.focus();
-            showToast(i18n[state.uiLang].toastCleared);
-        }
-
-        function toggleScrollMode() {
-            const t = i18n[state.uiLang];
-            state.mode = state.mode === "marquee" ? "static" : "marquee";
-            
-            const label = document.getElementById("label-mode");
-            const icon = document.getElementById("icon-mode");
-            
-            if (state.mode === "marquee") {
-                label.textContent = t.modeMarquee;
-                icon.className = "ph-bold ph-arrows-left-right text-yellow-400 text-sm";
-                showToast(t.toastModeMarquee);
-            } else {
-                label.textContent = t.modeStatic;
-                icon.className = "ph-bold ph-align-center-horizontal text-yellow-400 text-sm";
-                showToast(t.toastModeStatic);
-            }
-            updateDisplay();
-        }
-
-        function toggleMirror() {
-            const t = i18n[state.uiLang];
-            state.isMirrored = !state.isMirrored;
-            const btn = document.getElementById("btn-mirror");
-            if (state.isMirrored) {
-                btn.classList.add("bg-yellow-400", "text-black", "border-yellow-400");
-                btn.classList.remove("bg-zinc-800", "text-zinc-300", "border-zinc-700");
-                showToast(t.toastMirrorOn);
-            } else {
-                btn.classList.remove("bg-yellow-400", "text-black", "border-yellow-400");
-                btn.classList.add("bg-zinc-800", "text-zinc-300", "border-zinc-700");
-                showToast(t.toastMirrorOff);
-            }
-            updateDisplay();
-        }
-
-        function setTheme(themeKey) {
-            state.theme = themeKey;
-            document.querySelectorAll(".theme-btn").forEach(btn => {
-                if (btn.dataset.theme === themeKey) {
-                    btn.classList.remove("opacity-75");
-                    btn.classList.add("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-900");
-                } else {
-                    btn.classList.add("opacity-75");
-                    btn.classList.remove("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-900");
-                }
-            });
-            updateDisplay();
-        }
-
-        function setSpeed(speedKey) {
-            state.speed = speedKey;
-            document.querySelectorAll(".speed-btn").forEach(btn => {
-                if (btn.dataset.speed === speedKey) {
-                    btn.classList.add("bg-zinc-700", "text-white");
-                    btn.classList.remove("text-zinc-400");
-                } else {
-                    btn.classList.remove("bg-zinc-700", "text-white");
-                    btn.classList.add("text-zinc-400");
-                }
-            });
-            if (state.mode === "marquee") {
-                recalculateMarqueeSpeed();
-            }
-        }
-
-        // ==================== MODE LAYAR PENUH / FOKUS ====================
-        function enterFocusMode() {
-            closeQuickSettings();
-            state.isFocusMode = true;
-            topControls.classList.add("ui-hidden-top");
-            bottomControls.classList.add("ui-hidden-bottom");
-            focusHint.classList.remove("hidden");
-            floatingExitBtn.classList.remove("hidden");
-
-            try {
-                const docEl = document.documentElement;
-                if (docEl.requestFullscreen && !document.fullscreenElement) {
-                    docEl.requestFullscreen().catch(() => {});
-                } else if (docEl.webkitRequestFullscreen && !document.webkitFullscreenElement) {
-                    docEl.webkitRequestFullscreen();
-                }
-            } catch (err) {}
-
-            setTimeout(() => {
-                updateRotationBoxDimensions();
-                if (state.mode === "marquee") recalculateMarqueeSpeed();
-            }, 150);
-        }
-
-        function exitFocusMode(e) {
-            if (e) e.stopPropagation();
-            state.isFocusMode = false;
-            topControls.classList.remove("ui-hidden-top");
-            bottomControls.classList.remove("ui-hidden-bottom");
-            focusHint.classList.add("hidden");
-            floatingExitBtn.classList.add("hidden");
-
-            try {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(() => {});
-                } else if (document.webkitFullscreenElement) {
-                    document.webkitExitFullscreen();
-                }
-            } catch (err) {}
-
-            setTimeout(() => {
-                updateRotationBoxDimensions();
-                if (state.mode === "marquee") recalculateMarqueeSpeed();
-            }, 150);
-        }
-
-        function handleStageClick() {
-            if (state.isFocusMode) {
-                exitFocusMode();
-                // Langsung munculkan keyboard HP setelah keluar dari mode fokus
-                setTimeout(() => {
-                    messageInput.focus();
-                }, 120);
-            } else {
-                enterFocusMode();
-            }
-        }
-
-        let toastTimeout;
-        function showToast(msg) {
-            const toast = document.getElementById("toast-msg");
-            toast.textContent = msg;
-            toast.classList.remove("opacity-0");
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.add("opacity-0");
-            }, 1800);
-        }
-
-        window.addEventListener("DOMContentLoaded", init);
-    </script>
+    // Inisialisasi Awal
+    applyTheme("yellow");
+    updateUIControls();
+    renderText();
+  </script>
 </body>
 </html>
