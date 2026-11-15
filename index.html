@@ -2,7 +2,7 @@
 <html lang="id" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>BantuBicara Kaigo - 介護コミュニケーションボード</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -10,22 +10,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Noto+Sans+JP:wght@700;800;900&display=swap" rel="stylesheet">
-    <!-- Phosphor Icons untuk ikon UI yang bersih dan tegas -->
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
-        /* Pengaturan dasar tipografi ramah lansia Jepang (Noto Sans JP) */
+        /* Pengaturan tinggi viewport dinamis 100dvh agar pas 100% di HP tanpa terpotong bar browser */
         body, html {
             font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Inter', sans-serif;
+            height: 100dvh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
             overscroll-behavior: none;
             -webkit-tap-highlight-color: transparent;
             touch-action: none;
         }
 
-        /* Animasi Marquee yang mulus menggunakan GPU acceleration (translate3d) */
+        /* Animasi Marquee yang mulus menggunakan GPU acceleration */
         @keyframes marquee-scroll {
             0% {
-                transform: translate3d(100vw, 0, 0);
+                transform: translate3d(100%, 0, 0);
             }
             100% {
                 transform: translate3d(-100%, 0, 0);
@@ -46,7 +51,7 @@
             transform: scaleX(-1);
         }
 
-        /* Custom scrollbar halus untuk daftar frasa di dalam modal */
+        /* Custom scrollbar halus untuk modal */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -57,7 +62,7 @@
 
         /* Transisi UI kontrol */
         .ui-panel {
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
         }
         .ui-hidden-top {
             transform: translateY(-100%);
@@ -69,233 +74,244 @@
             opacity: 0;
             pointer-events: none;
         }
-
-        /* Transisi Modal Template */
-        .modal-backdrop {
-            transition: opacity 0.25s ease;
-        }
-        .modal-sheet {
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
-        }
     </style>
 </head>
-<body class="bg-black text-yellow-400 h-screen w-screen overflow-hidden flex flex-col justify-between select-none transition-colors duration-300" id="app-body">
+<body class="bg-black text-yellow-400 flex flex-col justify-between select-none transition-colors duration-300" id="app-body">
 
-    <!-- ==================== HEADER / PENGATURAN ATAS ==================== -->
-    <header id="top-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-lg">
-        <!-- Brand / Logo -->
-        <div class="flex items-center gap-2">
-            <div class="w-9 h-9 rounded-xl bg-yellow-400 text-black flex items-center justify-center font-black text-xl shadow-sm shrink-0">
+    <!-- ==================== HEADER / PENGATURAN ATAS RINGKAS ==================== -->
+    <header id="top-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-1.5 shadow-lg shrink-0">
+        <!-- Brand / Logo Ringkas -->
+        <div class="flex items-center gap-1.5 min-w-0 shrink">
+            <div class="w-8 h-8 rounded-xl bg-yellow-400 text-black flex items-center justify-center font-black text-lg shadow-sm shrink-0">
                 <i class="ph-bold ph-hand-heart"></i>
             </div>
-            <div>
-                <h1 id="ui-app-title" class="text-white font-extrabold text-sm sm:text-base leading-tight tracking-tight">BantuBicara Kaigo</h1>
-                <p id="ui-app-subtitle" class="text-zinc-400 text-[11px] font-medium">Papan Komunikasi Lansia & Tunarungu</p>
+            <div class="truncate">
+                <h1 id="ui-app-title" class="text-white font-extrabold text-xs sm:text-sm leading-tight truncate">BantuBicara</h1>
+                <p id="ui-app-subtitle" class="text-zinc-400 text-[10px] font-medium truncate hidden sm:block">Kaigo & Tunarungu</p>
             </div>
         </div>
 
-        <!-- Tombol Aksi Cepat Header -->
-        <div class="flex items-center gap-1.5 sm:gap-2">
-            <!-- Pengalih Bahasa Antarmuka (ID <-> 日本語) -->
-            <button id="btn-lang-toggle" onclick="toggleUILanguage()" class="px-2.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 text-xs sm:text-sm font-black flex items-center gap-1.5 border border-yellow-400/40 transition" title="Ganti Bahasa Antarmuka / 表示言語切替">
-                <i class="ph-bold ph-translate text-base"></i>
-                <span id="label-lang">日本語へ切替</span>
+        <!-- Bar Aksi Cepat Header (Semua muat dalam 1 baris di HP kecil) -->
+        <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <!-- Pengalih Bahasa (ID <-> 日本語) -->
+            <button type="button" id="btn-lang-toggle" onclick="toggleUILanguage()" class="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 text-[11px] sm:text-xs font-black flex items-center gap-1 border border-yellow-400/40 transition" title="Ganti Bahasa / 言語切替">
+                <i class="ph-bold ph-translate text-sm"></i>
+                <span id="label-lang">日本語</span>
             </button>
 
-            <!-- Toggle Mode: Diam (Statis) vs Berjalan -->
-            <button id="btn-mode-toggle" onclick="toggleScrollMode()" class="px-2.5 sm:px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 border border-zinc-700 transition">
-                <i id="icon-mode" class="ph-bold ph-align-center-horizontal text-yellow-400 text-base"></i>
-                <span id="label-mode">Diam</span>
+            <!-- Tombol Warna / Tema (Membuka Popover Tema & Mode) -->
+            <button type="button" id="btn-theme-toggle" onclick="toggleQuickSettings()" class="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white text-[11px] sm:text-xs font-bold flex items-center gap-1 border border-zinc-700 transition" title="Tema & Mode / 配色・表示設定">
+                <span id="theme-dot-preview" class="w-3.5 h-3.5 rounded-full bg-yellow-400 border border-white/60 shrink-0"></span>
+                <span id="label-theme-btn" class="hidden xs:inline sm:inline">Tema</span>
+                <i class="ph-bold ph-caret-down text-[10px] text-zinc-400"></i>
             </button>
 
-            <!-- Toggle Mirror Mode -->
-            <button id="btn-mirror" onclick="toggleMirror()" class="p-2 sm:px-2.5 sm:py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-300 text-xs sm:text-sm font-bold flex items-center gap-1 border border-zinc-700 transition" title="Cermin / 鏡文字">
-                <i class="ph-bold ph-flip-horizontal text-base"></i>
-                <span id="label-mirror" class="hidden md:inline">Cermin</span>
+            <!-- Tombol Template Kaigo -->
+            <button type="button" onclick="openTemplateModal()" class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 text-[11px] sm:text-xs font-black flex items-center gap-1 border border-yellow-400/50 transition" title="Template Kaigo / 定型文">
+                <i class="ph-bold ph-chats-teardrop text-sm"></i>
+                <span id="label-template-btn">Template</span>
             </button>
 
-            <!-- Tombol Fullscreen Layar Penuh -->
-            <button onclick="enterFocusMode()" class="px-3 sm:px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-md transition">
-                <i class="ph-bold ph-corners-out text-base"></i>
-                <span id="label-fullscreen">Layar Penuh</span>
+            <!-- Tombol Layar Penuh -->
+            <button type="button" onclick="enterFocusMode()" class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-[11px] sm:text-xs font-black flex items-center gap-1 shadow-sm transition" title="Layar Penuh / 全画面">
+                <i class="ph-bold ph-corners-out text-sm"></i>
+                <span id="label-fullscreen" class="hidden sm:inline">Layar Penuh</span>
             </button>
         </div>
     </header>
 
-    <!-- ==================== AREA TAMPILAN UTAMA (STAGE - ZOOM & GESER) ==================== -->
-    <main id="display-stage" class="relative flex-1 w-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing px-4">
-        
-        <!-- Layer Transformasi Zoom (Cubit) & Pan (Geser) -->
-        <div id="pan-zoom-layer" class="w-full h-full flex items-center justify-center will-change-transform origin-center">
-            <!-- Container Mirror Wrapper -->
-            <div id="mirror-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-200">
-                
-                <!-- MODE 1: TEKS BERJALAN (MARQUEE) -->
-                <div id="marquee-container" class="hidden w-full overflow-visible flex items-center">
-                    <div id="marquee-text" class="marquee-track font-black tracking-wide leading-none" style="font-size: 19vh;">
-                        おはようございます。よく眠れましたか？
-                    </div>
-                </div>
-
-                <!-- MODE 2: TEKS DIAM / STATIS (Default untuk Lansia agar nyaman dibaca) -->
-                <div id="static-container" class="w-full max-w-6xl mx-auto text-center px-3 sm:px-6 flex items-center justify-center">
-                    <p id="static-text" class="font-black tracking-normal leading-snug break-words" style="font-size: clamp(2.85rem, 8.5vw, 6.2rem);">
-                        おはようございます。よく眠れましたか？
-                    </p>
-                </div>
-
+    <!-- ==================== POPOVER PENGATURAN CEPAT (WARNA, MODE DIAM/BERJALAN, CERMIN) ==================== -->
+    <div id="quick-settings-popover" class="hidden fixed top-12 right-2.5 sm:right-4 z-40 w-72 sm:w-80 rounded-2xl bg-zinc-900/95 backdrop-blur-md border border-zinc-700 p-3 shadow-2xl flex flex-col gap-3">
+        <!-- Pilihan Tema Kontras Tinggi -->
+        <div class="flex items-center justify-between">
+            <span id="label-theme" class="text-zinc-300 text-xs font-bold">Warna Layar:</span>
+            <div class="flex items-center gap-1.5">
+                <button type="button" onclick="setTheme('yellow-black')" data-theme="yellow-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-yellow-400 flex items-center justify-center ring-2 ring-yellow-400 ring-offset-2 ring-offset-zinc-900" title="Hitam & Kuning">
+                    <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                </button>
+                <button type="button" onclick="setTheme('white-black')" data-theme="white-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-white flex items-center justify-center opacity-75 hover:opacity-100" title="Hitam & Putih">
+                    <span class="w-3 h-3 rounded-full bg-white"></span>
+                </button>
+                <button type="button" onclick="setTheme('white-navy')" data-theme="white-navy" class="theme-btn w-7 h-7 rounded-full bg-blue-950 border-2 border-white flex items-center justify-center opacity-75 hover:opacity-100" title="Biru Tua & Putih">
+                    <span class="w-3 h-3 rounded-full bg-white"></span>
+                </button>
+                <button type="button" onclick="setTheme('black-white')" data-theme="black-white" class="theme-btn w-7 h-7 rounded-full bg-white border-2 border-zinc-400 flex items-center justify-center opacity-75 hover:opacity-100" title="Putih & Hitam">
+                    <span class="w-3 h-3 rounded-full bg-black"></span>
+                </button>
             </div>
         </div>
 
+        <!-- Mode Tampilan (Diam vs Berjalan) & Cermin -->
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
+            <button type="button" id="btn-mode-toggle" onclick="toggleScrollMode()" class="flex-1 py-2 px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 border border-zinc-700 transition">
+                <i id="icon-mode" class="ph-bold ph-align-center-horizontal text-yellow-400 text-sm"></i>
+                <span id="label-mode">Diam</span>
+            </button>
+            <button type="button" id="btn-mirror" onclick="toggleMirror()" class="py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-zinc-700 transition">
+                <i class="ph-bold ph-flip-horizontal text-sm"></i>
+                <span id="label-mirror">Cermin</span>
+            </button>
+        </div>
+
+        <!-- Kecepatan Marquee (Aktif saat Mode Berjalan) -->
+        <div id="speed-control-group" class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800 opacity-40 pointer-events-none transition-opacity">
+            <span id="label-speed" class="text-zinc-400 text-xs font-bold shrink-0">Kecepatan:</span>
+            <div class="flex bg-zinc-950 p-0.5 rounded-xl border border-zinc-800">
+                <button type="button" onclick="setSpeed('slow')" data-speed="slow" id="btn-speed-slow" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold bg-zinc-700 text-white transition">Lambat</button>
+                <button type="button" onclick="setSpeed('normal')" data-speed="normal" id="btn-speed-normal" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-zinc-400 hover:text-white transition">Sedang</button>
+                <button type="button" onclick="setSpeed('fast')" data-speed="fast" id="btn-speed-fast" class="speed-btn px-2 py-1 rounded-lg text-[11px] font-bold text-zinc-400 hover:text-white transition">Cepat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== AREA TAMPILAN UTAMA (STAGE - ZOOM, GESER & PUTAR 90°) ==================== -->
+    <main id="display-stage" class="relative flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
+        
+        <!-- Layer Transformasi Zoom (Cubit) & Pan (Geser) -->
+        <div id="pan-zoom-layer" class="w-full h-full flex items-center justify-center will-change-transform origin-center">
+            <!-- Wadah Rotasi 0° / 90° (Dimensi ditukar otomatis saat rotasi 90° agar teks lebar penuh menyamping) -->
+            <div id="rotation-box" class="flex items-center justify-center transition-transform duration-300 ease-out">
+                <!-- Container Mirror Wrapper -->
+                <div id="mirror-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-200">
+                    
+                    <!-- MODE 1: TEKS BERJALAN (MARQUEE) -->
+                    <div id="marquee-container" class="hidden w-full overflow-hidden flex items-center">
+                        <div id="marquee-text" class="marquee-track font-black tracking-wide leading-none" style="font-size: clamp(3.5rem, 16vh, 9rem);">
+                            おはようございます。よく眠れましたか？
+                        </div>
+                    </div>
+
+                    <!-- MODE 2: TEKS DIAM / STATIS (Default untuk Lansia) -->
+                    <div id="static-container" class="w-full h-full flex items-center justify-center text-center px-4 sm:px-8">
+                        <p id="static-text" class="font-black tracking-normal leading-snug break-words max-w-full" style="font-size: clamp(2.4rem, 8.2vw, 6rem);">
+                            おはようございます。よく眠れましたか？
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Bar Tombol Melayang di Sudut Kiri Atas Area Teks (Putar 90° & Reset Posisi) -->
+        <div id="stage-floating-tools" class="absolute top-3 left-3 z-30 flex items-center gap-1.5">
+            <!-- Tombol Putar Layar 90° (Selalu mudah dijangkau & menonjol saat di-zoom) -->
+            <button type="button" id="btn-rotate-screen" onclick="toggleScreenRotation(event)" class="px-3 py-2 rounded-2xl bg-zinc-900/75 hover:bg-zinc-800 active:scale-95 backdrop-blur-md border border-zinc-700/80 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition opacity-85 hover:opacity-100" title="Putar Tampilan 90° / 画面回転">
+                <i id="icon-rotate" class="ph-bold ph-device-rotate text-yellow-400 text-base transition-transform duration-300"></i>
+                <span id="label-rotate">Putar</span>
+            </button>
+
+            <!-- Tombol Reset Posisi & Zoom (Muncul saat teks di-zoom atau digeser) -->
+            <button type="button" id="reset-transform-btn" onclick="resetPanZoom(event)" class="hidden px-3 py-2 rounded-2xl bg-zinc-900/85 hover:bg-zinc-800 active:scale-95 backdrop-blur-md border border-yellow-400/50 text-yellow-400 text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition">
+                <i class="ph-bold ph-arrows-in-cardinal text-base"></i>
+                <span id="label-reset-pos">Reset</span>
+            </button>
+        </div>
+
         <!-- Badge Persentase Zoom Sementara (Muncul saat cubit zoom in/out) -->
-        <div id="zoom-badge" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-zinc-900/90 backdrop-blur-md border border-zinc-700 text-yellow-400 text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-lg pointer-events-none">
+        <div id="zoom-badge" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-40 px-3 py-1 rounded-full bg-zinc-900/90 backdrop-blur-md border border-zinc-700 text-yellow-400 text-xs font-black flex items-center gap-1.5 shadow-lg pointer-events-none">
             <i class="ph-bold ph-magnifying-glass-plus"></i>
             <span id="zoom-badge-text">100%</span>
         </div>
 
-        <!-- Tombol Reset Zoom & Posisi (Muncul jika teks digeser atau di-zoom) -->
-        <button id="reset-transform-btn" onclick="resetPanZoom(event)" class="hidden fixed top-4 left-4 z-40 px-3.5 py-2.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 backdrop-blur-md border border-zinc-700 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xl transition active:scale-95">
-            <i class="ph-bold ph-arrows-in-cardinal text-yellow-400 text-base"></i>
-            <span id="label-reset-pos">Reset Posisi</span>
-        </button>
-
-        <!-- Indikator Petunjuk Ketuk & Geser (Muncul saat Mode Fokus / Layar Penuh) -->
-        <div id="focus-hint" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-5 py-2.5 rounded-full bg-zinc-900/85 backdrop-blur-md border border-zinc-700/80 text-white/95 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-2xl animate-pulse pointer-events-none whitespace-nowrap">
-            <i class="ph-bold ph-hand-tap text-yellow-400 text-lg"></i>
-            <span id="label-focus-hint">Ketuk untuk edit • Cubit untuk zoom • Geser teks</span>
-        </div>
-
-        <!-- Tombol Keluar Mengambang (Pojok Kanan Atas saat Mode Fokus) -->
-        <button id="floating-exit-btn" onclick="exitFocusMode(event)" class="hidden fixed top-4 right-4 z-40 px-4 py-2.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 backdrop-blur-md border border-zinc-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xl transition active:scale-95">
+        <!-- Tombol Keluar Mengambang (Pojok Kanan Atas saat Mode Layar Penuh) -->
+        <button type="button" id="floating-exit-btn" onclick="exitFocusMode(event)" class="hidden absolute top-3 right-3 z-30 px-3.5 py-2 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 active:scale-95 backdrop-blur-md border border-zinc-700/80 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition opacity-85 hover:opacity-100">
             <i class="ph-bold ph-pencil-simple text-yellow-400 text-base"></i>
             <span id="label-exit-focus">Edit Teks</span>
         </button>
+
+        <!-- Indikator Petunjuk Halus di Bawah (Hanya saat Mode Layar Penuh) -->
+        <div id="focus-hint" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-zinc-900/70 backdrop-blur-md border border-zinc-700/60 text-white/90 text-[11px] font-bold flex items-center gap-1.5 shadow-lg pointer-events-none whitespace-nowrap">
+            <i class="ph-bold ph-hand-tap text-yellow-400 text-sm"></i>
+            <span id="label-focus-hint">Ketuk layar: Edit • Cubit: Zoom • Putar: 90°</span>
+        </div>
     </main>
 
-    <!-- ==================== PANEL KONTROL & INPUT BAWAH (BERSIH & RINGKAS) ==================== -->
-    <section id="bottom-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-3 sm:p-4 flex flex-col gap-2.5 shadow-2xl">
-        
-        <!-- Baris 1: Pengaturan Tampilan (Tema Warna Kontras Tinggi & Kecepatan Berjalan) -->
-        <div class="flex flex-wrap items-center justify-between gap-2 bg-zinc-950/85 px-3 py-2 rounded-2xl border border-zinc-800/80">
-            
-            <!-- Pilihan Tema Kontras Tinggi Ramah Lansia -->
-            <div class="flex items-center gap-2">
-                <span id="label-theme" class="text-zinc-400 text-xs font-bold shrink-0">Warna:</span>
-                <div class="flex items-center gap-1.5">
-                    <button onclick="setTheme('yellow-black')" data-theme="yellow-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-yellow-400 flex items-center justify-center ring-2 ring-yellow-400 ring-offset-2 ring-offset-zinc-950" title="Hitam & Kuning / 黒×黄">
-                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-                    </button>
-                    <button onclick="setTheme('white-black')" data-theme="white-black" class="theme-btn w-7 h-7 rounded-full bg-black border-2 border-white flex items-center justify-center opacity-70 hover:opacity-100" title="Hitam & Putih / 黒×白">
-                        <span class="w-3 h-3 rounded-full bg-white"></span>
-                    </button>
-                    <button onclick="setTheme('black-white')" data-theme="black-white" class="theme-btn w-7 h-7 rounded-full bg-white border-2 border-zinc-400 flex items-center justify-center opacity-70 hover:opacity-100" title="Putih & Hitam / 白×黒">
-                        <span class="w-3 h-3 rounded-full bg-black"></span>
-                    </button>
-                    <button onclick="setTheme('white-navy')" data-theme="white-navy" class="theme-btn w-7 h-7 rounded-full bg-blue-950 border-2 border-white flex items-center justify-center opacity-70 hover:opacity-100" title="Biru Tua & Putih / 紺×白">
-                        <span class="w-3 h-3 rounded-full bg-white"></span>
-                    </button>
-                    <button onclick="setTheme('black-yellow')" data-theme="black-yellow" class="theme-btn w-7 h-7 rounded-full bg-yellow-400 border-2 border-black flex items-center justify-center opacity-70 hover:opacity-100" title="Kuning & Hitam / 黄×黒">
-                        <span class="w-3 h-3 rounded-full bg-black"></span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Pilihan Kecepatan Gulir (Aktif saat Mode Berjalan) -->
-            <div id="speed-control-group" class="flex items-center gap-2 opacity-40 pointer-events-none transition-opacity">
-                <span id="label-speed" class="text-zinc-400 text-xs font-bold shrink-0">Kecepatan:</span>
-                <div class="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
-                    <button onclick="setSpeed('slow')" data-speed="slow" id="btn-speed-slow" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-zinc-700 text-white transition">Lambat</button>
-                    <button onclick="setSpeed('normal')" data-speed="normal" id="btn-speed-normal" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition">Sedang</button>
-                    <button onclick="setSpeed('fast')" data-speed="fast" id="btn-speed-fast" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition">Cepat</button>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Baris 2: Tombol Template + Kotak Input Teks Utama + Tombol Tampilkan -->
-        <form onsubmit="handleFormSubmit(event)" class="flex items-stretch gap-2">
-            <!-- Satu Tombol Template Khusus -->
+    <!-- ==================== BAR INPUT BAWAH SUPER RINGKAS (1 BARIS + KEYBOARD INSTAN) ==================== -->
+    <section id="bottom-controls" class="ui-panel z-30 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 px-2.5 sm:px-4 py-2 shrink-0 shadow-2xl">
+        <form onsubmit="handleFormSubmit(event)" class="flex items-center gap-1.5 sm:gap-2">
+            <!-- Tombol Edit Instan (Memfokuskan kotak input & memunculkan keyboard HP seketika) -->
             <button 
                 type="button" 
-                onclick="openTemplateModal()" 
-                class="h-13 sm:h-14 px-3.5 sm:px-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 font-black text-xs sm:text-base flex items-center justify-center gap-1.5 border-2 border-yellow-400/50 shadow-md transition shrink-0"
-                title="Buka Daftar Template Kaigo / 定型文を開く"
+                onclick="focusKeyboardInput()" 
+                class="h-11 sm:h-12 px-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-yellow-400 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-zinc-700 transition shrink-0"
+                title="Ketik Teks / 文字入力"
             >
-                <i class="ph-bold ph-chats-teardrop text-xl"></i>
-                <span id="label-template-btn">Template</span>
+                <i class="ph-bold ph-keyboard text-lg"></i>
+                <span id="label-edit-btn">Edit</span>
             </button>
 
+            <!-- Kotak Input Teks Utama dengan Tombol Hapus (✕) di dalam -->
             <div class="relative flex-1 min-w-0">
                 <input 
                     type="text" 
                     id="message-input" 
-                    placeholder="Ketik pesan atau pilih Template..." 
+                    enterkeyhint="done"
+                    placeholder="Ketik pesan di sini..." 
                     autocomplete="off"
-                    class="w-full h-13 sm:h-14 pl-3.5 sm:pl-4 pr-11 rounded-2xl bg-zinc-800 text-white placeholder-zinc-400 text-base sm:text-xl font-bold border-2 border-zinc-700 focus:border-yellow-400 focus:outline-none transition"
+                    class="w-full h-11 sm:h-12 pl-3.5 pr-9 rounded-2xl bg-zinc-800 text-white placeholder-zinc-400 text-sm sm:text-base font-bold border-2 border-zinc-700 focus:border-yellow-400 focus:outline-none transition"
                 >
-                <!-- Tombol Hapus/Bersihkan Cepat di dalam input -->
+                <!-- Tombol Hapus (✕) di dalam kotak input -->
                 <button 
                     type="button" 
                     onclick="clearInput()" 
                     id="btn-clear"
-                    title="Hapus Teks / 消去"
-                    class="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-zinc-700/80 hover:bg-red-500/90 text-zinc-200 hover:text-white flex items-center justify-center transition active:scale-90"
+                    title="Hapus / 消去"
+                    class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-zinc-700/80 hover:bg-red-500/90 text-zinc-200 hover:text-white flex items-center justify-center transition active:scale-90"
                 >
-                    <i class="ph-bold ph-trash text-lg"></i>
+                    <i class="ph-bold ph-x text-sm"></i>
                 </button>
             </div>
 
-            <!-- Tombol Tampilkan Besar -->
+            <!-- Tombol Kirim / Selesai (OK / 決定) -->
             <button 
                 type="submit" 
-                class="h-13 sm:h-14 px-4 sm:px-6 rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-sm sm:text-lg flex items-center justify-center gap-1.5 shadow-lg transition shrink-0"
+                class="h-11 sm:h-12 px-3.5 sm:px-5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-1 shadow-md transition shrink-0"
             >
-                <i class="ph-bold ph-paper-plane-right text-xl"></i>
-                <span id="label-submit" class="hidden sm:inline">Tampilkan</span>
+                <i class="ph-bold ph-check text-lg"></i>
+                <span id="label-submit">OK</span>
             </button>
         </form>
-
     </section>
 
     <!-- ==================== MODAL OVERLAY TEMPLATE KAIGO ==================== -->
     <div id="template-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
         <!-- Latar Belakang Gelap Blur -->
-        <div onclick="closeTemplateModal()" class="modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-sm"></div>
+        <div onclick="closeTemplateModal()" class="fixed inset-0 bg-black/75 backdrop-blur-sm"></div>
 
         <!-- Kontainer Sheet / Kartu Modal -->
-        <div class="modal-sheet relative z-10 w-full sm:max-w-2xl max-h-[85vh] bg-zinc-900 border-t sm:border border-zinc-700 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+        <div class="relative z-10 w-full sm:max-w-2xl max-h-[82dvh] bg-zinc-900 border-t sm:border border-zinc-700 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
             
             <!-- Header Modal -->
-            <div class="px-4 sm:px-5 py-3.5 bg-zinc-950/90 border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-yellow-400/15 text-yellow-400 flex items-center justify-center">
+            <div class="px-4 py-3 bg-zinc-950/90 border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-yellow-400/15 text-yellow-400 flex items-center justify-center shrink-0">
                         <i class="ph-bold ph-chats-teardrop text-lg"></i>
                     </div>
                     <div>
-                        <h2 id="modal-template-title" class="text-white font-black text-base sm:text-lg leading-tight">Template Komunikasi Kaigo</h2>
-                        <p id="modal-template-subtitle" class="text-zinc-400 text-xs font-medium">Ketuk kalimat untuk langsung ditampilkan ke layar</p>
+                        <h2 id="modal-template-title" class="text-white font-black text-sm sm:text-base leading-tight">Template Komunikasi Kaigo</h2>
+                        <p id="modal-template-subtitle" class="text-zinc-400 text-[11px] font-medium">Ketuk kalimat untuk tampilkan ke layar</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeTemplateModal()" class="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-90" title="Tutup / 閉じる">
-                    <i class="ph-bold ph-x text-lg"></i>
+                <button type="button" onclick="closeTemplateModal()" class="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-90" title="Tutup / 閉じる">
+                    <i class="ph-bold ph-x text-base"></i>
                 </button>
             </div>
 
             <!-- Bar Kategori Kaigo di dalam Modal -->
-            <div id="modal-category-tabs" class="px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+            <div id="modal-category-tabs" class="px-3 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0" style="touch-action: pan-x;">
                 <!-- Diisi otomatis via JS -->
             </div>
 
-            <!-- Daftar Kalimat Template Kaigo (Bisa di-scroll vertikal) -->
-            <div id="modal-phrases-list" class="p-3 sm:p-4 overflow-y-auto flex flex-col gap-2.5 bg-zinc-900/95" style="touch-action: pan-y;">
+            <!-- Daftar Kalimat Template Kaigo (Bisa di-scroll vertikal di HP kecil) -->
+            <div id="modal-phrases-list" class="p-3 overflow-y-auto flex flex-col gap-2 bg-zinc-900/95" style="touch-action: pan-y;">
                 <!-- Diisi otomatis via JS -->
             </div>
 
         </div>
     </div>
 
-    <!-- Notifikasi Toast Mini (Pengganti alert) -->
-    <div id="toast-msg" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-zinc-800 text-white text-xs font-bold border border-zinc-700 shadow-xl opacity-0 pointer-events-none transition-opacity duration-300">
+    <!-- Notifikasi Toast Mini -->
+    <div id="toast-msg" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-xl bg-zinc-800/95 text-white text-xs font-bold border border-zinc-700 shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 whitespace-nowrap">
         Pesan diperbarui
     </div>
 
@@ -304,13 +320,15 @@
         const state = {
             uiLang: "id", // 'id' atau 'ja'
             text: "おはようございます。よく眠れましたか？",
-            mode: "static", // Default 'static' (Diam)
+            mode: "static", // 'static' (Diam) atau 'marquee' (Berjalan)
             theme: "yellow-black",
             speed: "slow",
             activeCategory: "greeting",
             isMirrored: false,
             isFocusMode: false,
             isTemplateOpen: false,
+            isQuickSettingsOpen: false,
+            isRotated90: false, // Rotasi kanvas 90 derajat (landscape virtual)
             // State Zoom & Geser (Pan)
             scale: 1,
             panX: 0,
@@ -320,70 +338,82 @@
         // Kamus Antarmuka Dwibahasa (Indonesia & Jepang)
         const i18n = {
             id: {
-                appTitle: "BantuBicara Kaigo",
-                appSubtitle: "Papan Komunikasi Lansia & Tunarungu",
-                langBtn: "日本語へ切替",
+                appTitle: "BantuBicara",
+                appSubtitle: "Kaigo & Tunarungu",
+                langBtn: "日本語",
+                themeBtn: "Tema",
+                templateBtn: "Template",
+                fullscreen: "Layar Penuh",
+                rotateBtn: "Putar",
+                rotateBtnActive: "Normal",
+                resetPos: "Reset",
+                exitFocus: "Edit Teks",
+                focusHint: "Ketuk layar: Edit • Cubit: Zoom • Putar: 90°",
+                themeLabel: "Warna Layar:",
                 modeStatic: "Diam",
                 modeMarquee: "Berjalan",
                 mirror: "Cermin",
-                fullscreen: "Layar Penuh",
-                focusHint: "Ketuk untuk edit • Cubit zoom • Geser teks",
-                exitFocus: "Edit Teks",
-                resetPos: "Reset Posisi",
-                themeLabel: "Warna:",
                 speedLabel: "Kecepatan:",
                 speedSlow: "Lambat",
                 speedNormal: "Sedang",
                 speedFast: "Cepat",
-                templateBtn: "Template",
+                editBtn: "Edit",
+                inputPlaceholder: "Ketik pesan atau pilih Template...",
+                submitBtn: "OK",
                 modalTitle: "Template Komunikasi Kaigo",
-                modalSubtitle: "Ketuk kalimat untuk langsung ditampilkan ke layar",
-                inputPlaceholder: "Ketik pesan Jepang atau pilih Template...",
-                submitBtn: "Tampilkan",
+                modalSubtitle: "Ketuk kalimat untuk tampilkan ke layar",
                 emptyFallback: "Silakan ketik atau pilih pesan...",
-                toastCleared: "Kotak teks dibersihkan",
-                toastEmpty: "Silakan ketik atau pilih pesan dulu",
-                toastModeStatic: "Mode: Teks Diam (Nyaman untuk Lansia)",
-                toastModeMarquee: "Mode: Tulisan Berjalan",
-                toastMirrorOn: "Mode Cermin Aktif",
-                toastMirrorOff: "Mode Cermin Nonaktif",
-                toastLangChanged: "Bahasa antarmuka: Bahasa Indonesia",
-                toastResetPos: "Ukuran & posisi teks dikembalikan ke tengah"
+                toastCleared: "Teks dihapus",
+                toastEmpty: "Silakan ketik atau pilih pesan",
+                toastModeStatic: "Mode: Teks Diam",
+                toastModeMarquee: "Mode: Teks Berjalan",
+                toastMirrorOn: "Mode Cermin: Aktif",
+                toastMirrorOff: "Mode Cermin: Nonaktif",
+                toastLangChanged: "Bahasa: Indonesia",
+                toastResetPos: "Ukuran & posisi dikembalikan",
+                toastRotatedOn: "Layar diputar 90° (Landscape)",
+                toastRotatedOff: "Layar kembali normal (0°)"
             },
             ja: {
-                appTitle: "介護コミュニケーション",
-                appSubtitle: "高齢者・難聴者向け筆談ボード",
-                langBtn: "Bahasa ID",
+                appTitle: "介護筆談ボード",
+                appSubtitle: "高齢者・難聴者向け",
+                langBtn: "ID語",
+                themeBtn: "配色",
+                templateBtn: "定型文",
+                fullscreen: "全画面",
+                rotateBtn: "回転",
+                rotateBtnActive: "元に戻す",
+                resetPos: "リセット",
+                exitFocus: "文字編集",
+                focusHint: "タップ: 編集 • ピンチ: 拡大縮小 • 回転: 90°",
+                themeLabel: "画面の色:",
                 modeStatic: "静止表示",
                 modeMarquee: "スクロール",
                 mirror: "鏡文字",
-                fullscreen: "全画面表示",
-                focusHint: "タップで編集 • ピンチで拡大縮小 • ドラッグで移動",
-                exitFocus: "文字を編集",
-                resetPos: "位置リセット",
-                themeLabel: "配色:",
                 speedLabel: "速度:",
                 speedSlow: "ゆっくり",
                 speedNormal: "ふつう",
                 speedFast: "はやい",
-                templateBtn: "定型文",
+                editBtn: "入力",
+                inputPlaceholder: "伝えたい言葉を入力...",
+                submitBtn: "決定",
                 modalTitle: "介護コミュニケーション定型文",
                 modalSubtitle: "タップすると画面に大きく表示されます",
-                inputPlaceholder: "伝えたい言葉を入力、または定型文を選択...",
-                submitBtn: "大きく表示",
                 emptyFallback: "メッセージを入力してください",
-                toastCleared: "入力欄を消去しました",
+                toastCleared: "入力を消去しました",
                 toastEmpty: "メッセージを入力してください",
-                toastModeStatic: "表示モード：静止表示（読みやすい）",
-                toastModeMarquee: "表示モード：文字スクロール",
-                toastMirrorOn: "鏡文字モード：オン",
-                toastMirrorOff: "鏡文字モード：オフ",
-                toastLangChanged: "表示言語を日本語に切り替えました",
-                toastResetPos: "文字サイズと位置を元に戻しました"
+                toastModeStatic: "表示モード：静止表示",
+                toastModeMarquee: "表示モード：スクロール",
+                toastMirrorOn: "鏡文字：オン",
+                toastMirrorOff: "鏡文字：オフ",
+                toastLangChanged: "表示言語：日本語",
+                toastResetPos: "サイズと位置をリセットしました",
+                toastRotatedOn: "画面を90°回転しました（横向き表示）",
+                toastRotatedOff: "画面の向きを元に戻しました"
             }
         };
 
-        // Kategori & Template Frasa Khusus Kaigo (介護専用フレーズテンプレート)
+        // Kategori & Template Frasa Khusus Kaigo
         const kaigoCategories = [
             {
                 id: "greeting",
@@ -459,11 +489,10 @@
 
         // Konfigurasi Tema Kontras Tinggi
         const themes = {
-            "yellow-black": { bg: "bg-black", text: "text-yellow-400" },
-            "white-black":  { bg: "bg-black", text: "text-white" },
-            "black-white":  { bg: "bg-white", text: "text-black" },
-            "white-navy":   { bg: "bg-blue-950", text: "text-white" },
-            "black-yellow": { bg: "bg-yellow-400", text: "text-black" }
+            "yellow-black": { bg: "bg-black", text: "text-yellow-400", dot: "bg-yellow-400" },
+            "white-black":  { bg: "bg-black", text: "text-white", dot: "bg-white" },
+            "white-navy":   { bg: "bg-blue-950", text: "text-white", dot: "bg-blue-400" },
+            "black-white":  { bg: "bg-white", text: "text-black", dot: "bg-zinc-900" }
         };
 
         // Kecepatan dasar dalam piksel per detik
@@ -477,6 +506,7 @@
         const appBody = document.getElementById("app-body");
         const displayStage = document.getElementById("display-stage");
         const panZoomLayer = document.getElementById("pan-zoom-layer");
+        const rotationBox = document.getElementById("rotation-box");
         const marqueeContainer = document.getElementById("marquee-container");
         const marqueeText = document.getElementById("marquee-text");
         const staticContainer = document.getElementById("static-container");
@@ -488,11 +518,14 @@
         const focusHint = document.getElementById("focus-hint");
         const floatingExitBtn = document.getElementById("floating-exit-btn");
         const resetTransformBtn = document.getElementById("reset-transform-btn");
+        const btnRotateScreen = document.getElementById("btn-rotate-screen");
+        const iconRotate = document.getElementById("icon-rotate");
         const zoomBadge = document.getElementById("zoom-badge");
         const zoomBadgeText = document.getElementById("zoom-badge-text");
         const templateModal = document.getElementById("template-modal");
         const modalCategoryTabs = document.getElementById("modal-category-tabs");
         const modalPhrasesList = document.getElementById("modal-phrases-list");
+        const quickSettingsPopover = document.getElementById("quick-settings-popover");
 
         // ==================== INISIALISASI ====================
         function init() {
@@ -501,25 +534,159 @@
             renderModalPhrases();
             messageInput.value = "";
             setSpeed("slow");
+            updateRotationBoxDimensions();
             setupGestures();
+            setupViewportListener();
             updateDisplay();
-            
-            window.addEventListener("resize", () => {
-                if (state.mode === "marquee") {
-                    recalculateMarqueeSpeed();
+
+            // Tutup popover pengaturan cepat saat klik di luar
+            document.addEventListener("pointerdown", (e) => {
+                if (
+                    state.isQuickSettingsOpen &&
+                    !quickSettingsPopover.contains(e.target) &&
+                    !document.getElementById("btn-theme-toggle").contains(e.target)
+                ) {
+                    closeQuickSettings();
                 }
             });
 
-            // Tutup modal dengan tombol Escape jika pakai keyboard
+            // Tutup modal dengan tombol Escape
             window.addEventListener("keydown", (e) => {
-                if (e.key === "Escape" && state.isTemplateOpen) {
-                    closeTemplateModal();
+                if (e.key === "Escape") {
+                    if (state.isTemplateOpen) closeTemplateModal();
+                    if (state.isQuickSettingsOpen) closeQuickSettings();
                 }
             });
         }
 
-        // ==================== KONTROL MODAL TEMPLATE ====================
+        // ==================== PENYESUAIAN VIEWPORT DINAMIS & KEYBOARD VIRTUAL ====================
+        function setupViewportListener() {
+            const handleViewportResize = () => {
+                // Pastikan tinggi body selalu mengikuti visualViewport saat keyboard HP muncul
+                if (window.visualViewport) {
+                    appBody.style.height = `${window.visualViewport.height}px`;
+                    window.scrollTo(0, 0);
+                }
+                updateRotationBoxDimensions();
+                if (state.mode === "marquee") {
+                    recalculateMarqueeSpeed();
+                }
+            };
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener("resize", handleViewportResize);
+                window.visualViewport.addEventListener("scroll", () => window.scrollTo(0, 0));
+            }
+            window.addEventListener("resize", handleViewportResize);
+        }
+
+        // ==================== FOKUS KEYBOARD INSTAN ====================
+        function focusKeyboardInput() {
+            closeQuickSettings();
+            if (state.isFocusMode) {
+                exitFocusMode();
+            }
+            // Fokuskan input segera dalam event klik pengguna agar keyboard HP langsung terbuka
+            messageInput.focus();
+            // Pindahkan kursor ke akhir teks jika ada isi
+            const len = messageInput.value.length;
+            messageInput.setSelectionRange(len, len);
+        }
+
+        // ==================== KONTROL ROTASI LAYAR 90° (PUTAR / 画面回転) ====================
+        function updateRotationBoxDimensions() {
+            const stageW = displayStage.clientWidth || window.innerWidth;
+            const stageH = displayStage.clientHeight || window.innerHeight;
+
+            if (state.isRotated90) {
+                // Tukar dimensi width dan height wadah teks saat diputar 90° agar teks panjang muat menyamping
+                rotationBox.style.width = `${stageH}px`;
+                rotationBox.style.height = `${stageW}px`;
+                rotationBox.style.transform = "rotate(90deg)";
+                staticText.style.fontSize = `clamp(2.4rem, ${(stageH * 0.085).toFixed(1)}px, 6.2rem)`;
+                marqueeText.style.fontSize = `clamp(3rem, ${(stageW * 0.42).toFixed(1)}px, 8.5rem)`;
+            } else {
+                rotationBox.style.width = `${stageW}px`;
+                rotationBox.style.height = `${stageH}px`;
+                rotationBox.style.transform = "rotate(0deg)";
+                staticText.style.fontSize = "clamp(2.4rem, 8.2vw, 6rem)";
+                marqueeText.style.fontSize = "clamp(3.5rem, 16vh, 9rem)";
+            }
+        }
+
+        async function toggleScreenRotation(e) {
+            if (e) e.stopPropagation();
+            const t = i18n[state.uiLang];
+            state.isRotated90 = !state.isRotated90;
+
+            // 1. Coba kunci orientasi hardware melalui Screen Orientation API jika didukung saat fullscreen
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    if (state.isRotated90 && document.fullscreenElement) {
+                        await screen.orientation.lock("landscape").catch(() => {});
+                    } else if (!state.isRotated90 && screen.orientation.unlock) {
+                        screen.orientation.unlock();
+                    }
+                }
+            } catch (err) {}
+
+            // 2. Terapkan rotasi kanvas 90° yang pasti berhasil di semua perangkat (iOS/Android)
+            updateRotationBoxDimensions();
+            updateRotateButtonUI();
+
+            if (state.mode === "marquee") {
+                recalculateMarqueeSpeed();
+            }
+
+            showToast(state.isRotated90 ? t.toastRotatedOn : t.toastRotatedOff);
+        }
+
+        function updateRotateButtonUI() {
+            const t = i18n[state.uiLang];
+            const labelRotate = document.getElementById("label-rotate");
+            const isZoomed = Math.abs(state.scale - 1) > 0.04;
+
+            if (state.isRotated90) {
+                labelRotate.textContent = t.rotateBtnActive;
+                btnRotateScreen.classList.add("bg-yellow-400", "text-black", "border-yellow-400");
+                btnRotateScreen.classList.remove("bg-zinc-900/75", "text-white", "border-zinc-700/80");
+                iconRotate.classList.remove("text-yellow-400");
+                iconRotate.classList.add("text-black", "rotate-90");
+            } else {
+                labelRotate.textContent = t.rotateBtn;
+                btnRotateScreen.classList.remove("bg-yellow-400", "text-black", "border-yellow-400");
+                btnRotateScreen.classList.add("bg-zinc-900/75", "text-white");
+                iconRotate.classList.add("text-yellow-400");
+                iconRotate.classList.remove("text-black", "rotate-90");
+
+                // Menonjolkan border tombol putar saat user melakukan zoom
+                if (isZoomed) {
+                    btnRotateScreen.classList.add("border-yellow-400", "ring-2", "ring-yellow-400/40", "opacity-100");
+                    btnRotateScreen.classList.remove("border-zinc-700/80");
+                } else {
+                    btnRotateScreen.classList.remove("border-yellow-400", "ring-2", "ring-yellow-400/40");
+                    btnRotateScreen.classList.add("border-zinc-700/80");
+                }
+            }
+        }
+
+        // ==================== POPOVER PENGATURAN CEPAT & MODAL TEMPLATE ====================
+        function toggleQuickSettings() {
+            state.isQuickSettingsOpen = !state.isQuickSettingsOpen;
+            if (state.isQuickSettingsOpen) {
+                quickSettingsPopover.classList.remove("hidden");
+            } else {
+                quickSettingsPopover.classList.add("hidden");
+            }
+        }
+
+        function closeQuickSettings() {
+            state.isQuickSettingsOpen = false;
+            quickSettingsPopover.classList.add("hidden");
+        }
+
         function openTemplateModal() {
+            closeQuickSettings();
             state.isTemplateOpen = true;
             renderModalCategoryTabs();
             renderModalPhrases();
@@ -547,22 +714,25 @@
             document.getElementById("ui-app-title").textContent = t.appTitle;
             document.getElementById("ui-app-subtitle").textContent = t.appSubtitle;
             document.getElementById("label-lang").textContent = t.langBtn;
+            document.getElementById("label-theme-btn").textContent = t.themeBtn;
+            document.getElementById("label-template-btn").textContent = t.templateBtn;
+            document.getElementById("label-fullscreen").textContent = t.fullscreen;
+            document.getElementById("label-reset-pos").textContent = t.resetPos;
+            document.getElementById("label-exit-focus").textContent = t.exitFocus;
+            document.getElementById("label-focus-hint").textContent = t.focusHint;
+            document.getElementById("label-theme").textContent = t.themeLabel;
             document.getElementById("label-mode").textContent = state.mode === "static" ? t.modeStatic : t.modeMarquee;
             document.getElementById("label-mirror").textContent = t.mirror;
-            document.getElementById("label-fullscreen").textContent = t.fullscreen;
-            document.getElementById("label-focus-hint").textContent = t.focusHint;
-            document.getElementById("label-exit-focus").textContent = t.exitFocus;
-            document.getElementById("label-reset-pos").textContent = t.resetPos;
-            document.getElementById("label-theme").textContent = t.themeLabel;
             document.getElementById("label-speed").textContent = t.speedLabel;
             document.getElementById("btn-speed-slow").textContent = t.speedSlow;
             document.getElementById("btn-speed-normal").textContent = t.speedNormal;
             document.getElementById("btn-speed-fast").textContent = t.speedFast;
-            document.getElementById("label-template-btn").textContent = t.templateBtn;
-            document.getElementById("modal-template-title").textContent = t.modalTitle;
-            document.getElementById("modal-template-subtitle").textContent = t.modalSubtitle;
+            document.getElementById("label-edit-btn").textContent = t.editBtn;
             messageInput.placeholder = t.inputPlaceholder;
             document.getElementById("label-submit").textContent = t.submitBtn;
+            document.getElementById("modal-template-title").textContent = t.modalTitle;
+            document.getElementById("modal-template-subtitle").textContent = t.modalSubtitle;
+            updateRotateButtonUI();
         }
 
         // ==================== RENDER KATEGORI & TEMPLATE KAIGO DI DALAM MODAL ====================
@@ -572,14 +742,14 @@
                 const isActive = cat.id === state.activeCategory;
                 const btn = document.createElement("button");
                 btn.type = "button";
-                btn.className = `shrink-0 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
+                btn.className = `shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
                     isActive
                         ? "bg-yellow-400 text-black border-yellow-400 shadow-sm"
                         : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
                 }`;
                 
                 const labelText = state.uiLang === "ja" ? cat.labelJa : `${cat.labelId} (${cat.labelJa})`;
-                btn.innerHTML = `<i class="ph-bold ${cat.icon} text-base"></i><span>${labelText}</span>`;
+                btn.innerHTML = `<i class="ph-bold ${cat.icon} text-sm"></i><span>${labelText}</span>`;
                 
                 btn.onclick = () => {
                     state.activeCategory = cat.id;
@@ -597,7 +767,7 @@
             activeCatObj.phrases.forEach(item => {
                 const btn = document.createElement("button");
                 btn.type = "button";
-                btn.className = "w-full text-left px-4 py-3 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 active:bg-yellow-400 active:text-black text-white border border-zinc-700/90 transition cursor-pointer flex items-center justify-between gap-3 group";
+                btn.className = "w-full text-left px-3.5 py-2.5 rounded-2xl bg-zinc-800/90 hover:bg-zinc-700 active:bg-yellow-400 active:text-black text-white border border-zinc-700/90 transition cursor-pointer flex items-center justify-between gap-2.5 group";
                 
                 if (state.uiLang === "id") {
                     btn.innerHTML = `
@@ -605,7 +775,7 @@
                             <span class="text-sm sm:text-base font-black leading-snug text-yellow-300 group-active:text-black">${item.ja}</span>
                             <span class="text-xs font-medium leading-tight text-zinc-300 group-active:text-zinc-900">${item.id}</span>
                         </div>
-                        <i class="ph-bold ph-arrow-up-right text-lg text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
+                        <i class="ph-bold ph-arrow-up-right text-base text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
                     `;
                 } else {
                     btn.innerHTML = `
@@ -613,7 +783,7 @@
                             <span class="text-[11px] font-bold leading-tight text-zinc-400 group-active:text-zinc-800">${item.reading}</span>
                             <span class="text-sm sm:text-base font-black leading-snug text-white group-active:text-black">${item.ja}</span>
                         </div>
-                        <i class="ph-bold ph-arrow-up-right text-lg text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
+                        <i class="ph-bold ph-arrow-up-right text-base text-zinc-400 group-hover:text-yellow-400 group-active:text-black shrink-0"></i>
                     `;
                 }
 
@@ -639,6 +809,8 @@
             } else {
                 resetTransformBtn.classList.add("hidden");
             }
+
+            updateRotateButtonUI();
 
             if (showIndicator) {
                 zoomBadgeText.textContent = `${Math.round(state.scale * 100)}%`;
@@ -807,6 +979,11 @@
             const activeTheme = themes[state.theme];
             appBody.classList.add(activeTheme.bg, activeTheme.text);
 
+            const dotPreview = document.getElementById("theme-dot-preview");
+            if (dotPreview) {
+                dotPreview.className = `w-3.5 h-3.5 rounded-full ${activeTheme.dot} border border-white/60 shrink-0`;
+            }
+
             if (state.mode === "marquee") {
                 marqueeContainer.classList.remove("hidden");
                 staticContainer.classList.add("hidden");
@@ -830,8 +1007,8 @@
             
             requestAnimationFrame(() => {
                 const textWidth = marqueeText.offsetWidth;
-                const screenWidth = window.innerWidth;
-                const totalDistance = textWidth + screenWidth;
+                const containerWidth = rotationBox.clientWidth || window.innerWidth;
+                const totalDistance = textWidth + containerWidth;
                 const pxPerSec = speedPxPerSec[state.speed];
                 
                 const durationSec = Math.max(3.5, totalDistance / pxPerSec);
@@ -873,11 +1050,11 @@
             
             if (state.mode === "marquee") {
                 label.textContent = t.modeMarquee;
-                icon.className = "ph-bold ph-arrows-left-right text-yellow-400 text-base";
+                icon.className = "ph-bold ph-arrows-left-right text-yellow-400 text-sm";
                 showToast(t.toastModeMarquee);
             } else {
                 label.textContent = t.modeStatic;
-                icon.className = "ph-bold ph-align-center-horizontal text-yellow-400 text-base";
+                icon.className = "ph-bold ph-align-center-horizontal text-yellow-400 text-sm";
                 showToast(t.toastModeStatic);
             }
             updateDisplay();
@@ -903,11 +1080,11 @@
             state.theme = themeKey;
             document.querySelectorAll(".theme-btn").forEach(btn => {
                 if (btn.dataset.theme === themeKey) {
-                    btn.classList.remove("opacity-70");
-                    btn.classList.add("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-950");
+                    btn.classList.remove("opacity-75");
+                    btn.classList.add("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-900");
                 } else {
-                    btn.classList.add("opacity-70");
-                    btn.classList.remove("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-950");
+                    btn.classList.add("opacity-75");
+                    btn.classList.remove("ring-2", "ring-yellow-400", "ring-offset-2", "ring-offset-zinc-900");
                 }
             });
             updateDisplay();
@@ -931,6 +1108,7 @@
 
         // ==================== MODE LAYAR PENUH / FOKUS ====================
         function enterFocusMode() {
+            closeQuickSettings();
             state.isFocusMode = true;
             topControls.classList.add("ui-hidden-top");
             bottomControls.classList.add("ui-hidden-bottom");
@@ -946,9 +1124,10 @@
                 }
             } catch (err) {}
 
-            if (state.mode === "marquee") {
-                setTimeout(recalculateMarqueeSpeed, 150);
-            }
+            setTimeout(() => {
+                updateRotationBoxDimensions();
+                if (state.mode === "marquee") recalculateMarqueeSpeed();
+            }, 150);
         }
 
         function exitFocusMode(e) {
@@ -967,14 +1146,19 @@
                 }
             } catch (err) {}
 
-            if (state.mode === "marquee") {
-                setTimeout(recalculateMarqueeSpeed, 150);
-            }
+            setTimeout(() => {
+                updateRotationBoxDimensions();
+                if (state.mode === "marquee") recalculateMarqueeSpeed();
+            }, 150);
         }
 
         function handleStageClick() {
             if (state.isFocusMode) {
                 exitFocusMode();
+                // Langsung munculkan keyboard HP setelah keluar dari mode fokus
+                setTimeout(() => {
+                    messageInput.focus();
+                }, 120);
             } else {
                 enterFocusMode();
             }
