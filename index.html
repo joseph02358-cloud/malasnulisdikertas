@@ -4,6 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>BantuBicara Kaigo — 介護コミュニケーション</title>
+
+  <!-- KONFIGURASI PWA (AGAR BISA DI-INSTALL DI ANDROID & IPHONE) -->
+  <meta name="application-name" content="BantuBicara" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BantuBicara" />
+  <link id="pwa-manifest" rel="manifest" />
+  <link id="apple-touch-icon" rel="apple-touch-icon" />
+  <link id="favicon" rel="icon" type="image/png" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -41,6 +53,7 @@
       transition: background-color 0.2s ease, color 0.2s ease;
       position: relative;
       overflow: hidden;
+      padding-top: env(safe-area-inset-top);
     }
 
     .display-font {
@@ -172,8 +185,11 @@
         </div>
       </div>
 
-      <!-- Kanan: Mode Diam/Berjalan, Cermin, Layar Penuh -->
+      <!-- Kanan: Mode Diam/Berjalan, Cermin, Layar Penuh, Install -->
       <div class="flex items-center gap-1">
+        <button id="btn-install" type="button" class="hidden px-2 py-1.5 rounded-lg bg-sky-500 active:bg-sky-600 text-black text-xs font-extrabold">
+          📲 Install
+        </button>
         <button id="btn-motion" type="button" class="px-2 py-1.5 rounded-lg bg-white/15 active:bg-white/25 text-xs font-bold border border-white/15">
           Diam
         </button>
@@ -191,7 +207,7 @@
 
     <!-- AREA LAYAR TEKS UTAMA -->
     <main id="stage">
-      <!-- Tombol Aksi Cepat di Pojok Kiri Atas Stage (Tetap mudah dijangkau, termasuk saat layar penuh) -->
+      <!-- Tombol Aksi Cepat di Pojok Kiri Atas Stage -->
       <div id="floating-tools" class="z-20 absolute top-2.5 left-2.5 flex items-center gap-1.5">
         <button id="btn-rotate" type="button" class="px-2.5 py-1.5 rounded-full bg-neutral-900/80 text-white border border-white/25 backdrop-blur-md text-xs font-bold shadow-lg active:scale-95 transition flex items-center gap-1">
           <span>↻</span>
@@ -224,7 +240,7 @@
       </div>
     </main>
 
-    <!-- BAR BAWAH RINGKAS (1 BARIS, ANTI TERPOTONG) -->
+    <!-- BAR BAWAH RINGKAS -->
     <footer id="bottom-bar" class="hud-transition z-20 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-black/85 backdrop-blur-md border-t border-white/15 text-white shrink-0">
       <div class="flex items-center gap-1.5 w-full">
         <!-- Tombol Template -->
@@ -233,7 +249,7 @@
           <span id="lbl-template">Template</span>
         </button>
 
-        <!-- Tombol Edit (Satu-satunya pemicu keyboard selain mengetuk kotak input) -->
+        <!-- Tombol Edit -->
         <button id="btn-edit-focus" type="button" class="shrink-0 px-2.5 py-2.5 rounded-xl bg-white/15 active:bg-white/25 text-white border border-white/20 text-xs font-extrabold flex items-center gap-1">
           <span>✏️</span>
           <span id="lbl-edit">Edit</span>
@@ -264,7 +280,6 @@
     <!-- MODAL POPUP TEMPLATE KAIGO -->
     <div id="template-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4">
       <div class="bg-neutral-900 text-white w-full max-w-xl mx-auto rounded-t-2xl sm:rounded-2xl border border-white/20 flex flex-col max-h-[82dvh] shadow-2xl overflow-hidden">
-        <!-- Header Modal -->
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/15 shrink-0">
           <h2 id="modal-title" class="text-sm font-extrabold tracking-wide text-amber-400">
             Template Komunikasi Kaigo (介護定型文)
@@ -274,20 +289,170 @@
           </button>
         </div>
 
-        <!-- Tab Kategori -->
-        <div id="category-tabs" class="flex items-center gap-1.5 px-3 py-2.5 overflow-x-auto clean-scroll border-b border-white/10 shrink-0">
-          <!-- Diisi via JS -->
-        </div>
+        <div id="category-tabs" class="flex items-center gap-1.5 px-3 py-2.5 overflow-x-auto clean-scroll border-b border-white/10 shrink-0"></div>
 
-        <!-- Daftar Frasa -->
-        <div id="phrase-list" class="p-3 overflow-y-auto clean-scroll space-y-2 flex-1">
-          <!-- Diisi via JS -->
+        <div id="phrase-list" class="p-3 overflow-y-auto clean-scroll space-y-2 flex-1"></div>
+      </div>
+    </div>
+
+    <!-- MODAL PANDUAN INSTALL (KHUSUS IPHONE / BROWSER MANUAL) -->
+    <div id="ios-install-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-neutral-900 text-white w-full max-w-sm rounded-2xl border border-white/20 p-5 shadow-2xl space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-extrabold text-amber-400">Pasang di Layar Utama</h3>
+          <button id="btn-close-ios-modal" type="button" class="w-7 h-7 rounded-full bg-white/15 text-xs font-bold">✕</button>
         </div>
+        <p class="text-xs text-white/80 leading-relaxed">
+          Untuk memasang aplikasi ini di layar utama HP Anda:
+        </p>
+        <ol class="text-xs text-white/90 space-y-2 list-decimal pl-4">
+          <li><strong>iPhone (Safari):</strong> Ketuk tombol <strong>Bagikan (Share)</strong> di bagian bawah layar, lalu pilih <strong>"Tambah ke Layar Utama" (Add to Home Screen)</strong>.</li>
+          <li><strong>Android (Chrome):</strong> Ketuk ikon <strong>titik tiga (⋮)</strong> di pojok kanan atas, lalu pilih <strong>"Tambahkan ke Layar utama"</strong> atau <strong>"Install aplikasi"</strong>.</li>
+        </ol>
+        <button id="btn-ok-ios-modal" type="button" class="w-full py-2.5 rounded-xl bg-amber-400 text-black text-xs font-extrabold">
+          Mengerti
+        </button>
       </div>
     </div>
   </div>
 
   <script>
+    // ========================================================
+    // 1. INISIALISASI PWA (IKON, MANIFEST & SERVICE WORKER)
+    // ========================================================
+    (function setupPWA() {
+      // Buat ikon aplikasi 512x512 secara otomatis via Canvas
+      function generateAppIcon(size) {
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+
+        // Latar Hitam dengan sudut membulat
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, size, size);
+
+        // Bingkai Kuning Kontras Tinggi
+        const pad = size * 0.08;
+        ctx.strokeStyle = "#FFE600";
+        ctx.lineWidth = size * 0.04;
+        ctx.strokeRect(pad, pad, size - pad * 2, size - pad * 2);
+
+        // Tulisan Kanji "介護" (Kaigo)
+        ctx.fillStyle = "#FFE600";
+        ctx.font = `900 ${Math.round(size * 0.36)}px "Noto Sans JP", sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("介護", size / 2, size * 0.46);
+
+        // Subteks "BantuBicara"
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = `800 ${Math.round(size * 0.11)}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillText("BantuBicara", size / 2, size * 0.76);
+
+        return canvas.toDataURL("image/png");
+      }
+
+      const icon192 = generateAppIcon(192);
+      const icon512 = generateAppIcon(512);
+
+      document.getElementById("apple-touch-icon").href = icon512;
+      document.getElementById("favicon").href = icon192;
+
+      // Buat Web App Manifest secara dinamis
+      const manifestData = {
+        name: "BantuBicara Kaigo — 介護コミュニケーション",
+        short_name: "BantuBicara",
+        description: "Papan teks besar kontras tinggi untuk komunikasi lansia (Kaigo) dalam bahasa Jepang & Indonesia.",
+        start_url: window.location.href,
+        scope: "./",
+        display: "standalone",
+        orientation: "any",
+        background_color: "#000000",
+        theme_color: "#000000",
+        icons: [
+          { src: icon192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: "application/manifest+json" });
+      document.getElementById("pwa-manifest").href = URL.createObjectURL(manifestBlob);
+
+      // Daftarkan Service Worker Offline (berjalan jika diakses via HTTPS / localhost)
+      if ("serviceWorker" in navigator && (window.location.protocol === "https:" || window.location.hostname === "localhost")) {
+        const swCode = `
+          const CACHE_NAME = 'bantubicara-kaigo-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+            e.waitUntil(
+              caches.open(CACHE_NAME).then((cache) => cache.addAll([self.location.href]).catch(() => {}))
+            );
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(self.clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(
+              caches.match(e.request).then((cached) => {
+                return cached || fetch(e.request).then((res) => {
+                  if (e.request.method === 'GET' && res.status === 200) {
+                    const copy = res.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(e.request, copy));
+                  }
+                  return res;
+                }).catch(() => cached);
+              })
+            );
+          });
+        `;
+        const swBlob = new Blob([swCode], { type: "application/javascript" });
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      }
+    })();
+
+    // Tangkap event install di Android Chrome
+    let deferredInstallPrompt = null;
+    const btnInstall = document.getElementById("btn-install");
+    const iosInstallModal = document.getElementById("ios-install-modal");
+
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (!isStandalone && isIOS) {
+      btnInstall.classList.remove("hidden");
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (!isStandalone) {
+        btnInstall.classList.remove("hidden");
+      }
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      btnInstall.classList.add("hidden");
+    });
+
+    btnInstall.addEventListener("click", async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === "accepted") {
+          btnInstall.classList.add("hidden");
+        }
+        deferredInstallPrompt = null;
+      } else {
+        iosInstallModal.classList.remove("hidden");
+      }
+    });
+
+    document.getElementById("btn-close-ios-modal").addEventListener("click", () => iosInstallModal.classList.add("hidden"));
+    document.getElementById("btn-ok-ios-modal").addEventListener("click", () => iosInstallModal.classList.add("hidden"));
+
     // ==============================
     // DATA TEMPLATE KAIGO DWIBAHASA
     // ==============================
@@ -372,7 +537,7 @@
     // STATE APLIKASI
     // ==============================
     const state = {
-      lang: "id", // 'id' atau 'jp'
+      lang: "id",
       theme: "yellow",
       isMarquee: false,
       speedIndex: 1,
@@ -491,6 +656,9 @@
       appRoot.style.backgroundColor = t.bg;
       appRoot.style.color = t.text;
 
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute("content", t.bg);
+
       document.querySelectorAll(".theme-btn").forEach((btn) => {
         const active = btn.dataset.theme === themeKey;
         btn.style.outline = active ? "2px solid #38BDF8" : "none";
@@ -555,7 +723,6 @@
     function renderTemplateModal() {
       const isID = state.lang === "id";
 
-      // Render Tab Kategori
       categoryTabs.innerHTML = KAIGO_TEMPLATES.map((cat) => {
         const active = cat.id === state.activeCategory;
         return `
@@ -580,7 +747,6 @@
         });
       });
 
-      // Render Daftar Kalimat
       const currentCat = KAIGO_TEMPLATES.find((c) => c.id === state.activeCategory) || KAIGO_TEMPLATES[0];
       phraseList.innerHTML = currentCat.phrases.map((item, idx) => `
         <button
@@ -607,11 +773,7 @@
     }
 
     // ==============================
-    // INTERAKSI GESTUR STAGE:
-    // - 1 Ketukan (Tap) => Toggle Layar Penuh (TANPA memunculkan keyboard!)
-    // - 2 Ketukan (Double Tap) => Reset Zoom & Posisi
-    // - 1 Jari Geser => Pan (Geser posisi teks)
-    // - 2 Jari Cubit => Pinch-to-Zoom
+    // INTERAKSI GESTUR STAGE
     // ==============================
     let pointers = new Map();
     let isDragging = false;
@@ -630,7 +792,6 @@
     }
 
     stage.addEventListener("pointerdown", (e) => {
-      // Abaikan jika menyentuh tombol melayang (Putar / Reset)
       if (e.target.closest("#floating-tools")) return;
 
       stage.setPointerCapture(e.pointerId);
@@ -693,14 +854,12 @@
       if (wasSingleTap) {
         const now = Date.now();
         if (now - lastTapTime < 260) {
-          // Double tap -> Reset zoom & posisi
           clearTimeout(singleTapTimer);
           lastTapTime = 0;
           resetView();
         } else {
           lastTapTime = now;
           singleTapTimer = setTimeout(() => {
-            // Single tap -> Hanya keluar/masuk layar penuh, JANGAN panggil textInput.focus()
             setFullscreen(!state.isFullscreen);
           }, 265);
         }
@@ -713,7 +872,6 @@
       isDragging = false;
     });
 
-    // Zoom menggunakan scroll wheel mouse/trackpad di desktop
     stage.addEventListener("wheel", (e) => {
       e.preventDefault();
       const delta = e.deltaY < 0 ? 1.1 : 0.9;
@@ -767,7 +925,6 @@
       resetView();
     });
 
-    // Tombol Edit: Memunculkan keyboard secara eksplisit
     btnEditFocus.addEventListener("click", () => {
       if (state.isFullscreen) {
         setFullscreen(false);
@@ -798,7 +955,6 @@
       renderText();
     });
 
-    // Modal Template
     btnOpenTemplate.addEventListener("click", () => {
       textInput.blur();
       renderTemplateModal();
@@ -815,7 +971,6 @@
       }
     });
 
-    // Penyesuaian otomatis saat orientasi layar atau tinggi keyboard berubah
     window.addEventListener("resize", updateRotationDimensions);
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
